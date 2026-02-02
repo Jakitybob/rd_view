@@ -12,6 +12,15 @@ using std::string;
 
 class REDirect: public RenderEngine
 {
+private:
+    int frameNumber = 0; // Current frame
+
+    // The RGB values used for the background, default black
+
+
+    // The RGB values used for drawing to the screen, default white
+
+
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
     int rd_format(int xresolution, int yresolution) override;
