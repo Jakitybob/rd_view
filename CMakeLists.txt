@@ -29,6 +29,7 @@ add_executable(${PROJECT_NAME}
         include/rd_enginebase.h
         include/rd_error.h
         include/rd_display.h
+        include/global_variables.h
 )
 
 # Link the library to the executable
