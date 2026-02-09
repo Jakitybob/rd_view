@@ -52,6 +52,27 @@ int REDirect::rd_frame_end()
 /// TODO: Implement
 int REDirect::rd_circle(const float center[3], float radius)
 {
+    // Create our decision variable
+    int decision = 1 - radius;
+
+    // Loop across our octant to draw our circle
+    for (int x = 0, y = radius; x < y;)
+    {
+        // Plot our points and increment x
+        plot_circle(x, y, center[0], center[1]);
+        x++;
+
+        // Check if pixel is outside or on circle
+        if (decision <= 0)
+            decision += 2 * x + 1;
+        // Otherwise pixel is inside circle, decrement y
+        else
+        {
+            y--;
+            decision += 2 * x - 2 * y + 1;
+        }
+    }
+
     return RD_OK;
 }
 
@@ -199,4 +220,26 @@ void REDirect::plot_steep_line(int startX, int startY, int endX, int endY)
         else
             decision += 2 * abs(deltaX);
     }
+}
+
+/// Plots eight points along the boundary of a circle given an x and y coordinate
+/// contained within a single octant of the desired circle.
+/// @param x The X value of a point from an octant on the circle.
+/// @param y The Y value of a point from an octant on the circle.
+/// @param xCenter The x-coordinate of the point at the center of the circle to draw.
+/// @param yCenter The y-coordinate of the point at the center of the circle to draw.
+void REDirect::plot_circle(int x, int y, int xCenter, int yCenter)
+{
+    // Array of colors
+    const float* color = new float[3] {drawRed, drawGreen, drawBlue};
+
+    // Write all eight points based on different combinations of x, y, -x, and -y.
+    rd_write_pixel(x + xCenter, y + yCenter, color);
+    rd_write_pixel(-x + xCenter, y + yCenter, color);
+    rd_write_pixel(x + xCenter, -y + yCenter, color);
+    rd_write_pixel(-x + xCenter, -y + yCenter, color);
+    rd_write_pixel(y + xCenter, x + yCenter, color);
+    rd_write_pixel(-y + xCenter, x + yCenter, color);
+    rd_write_pixel(y + xCenter, -x + yCenter, color);
+    rd_write_pixel(-y + xCenter, -x + yCenter, color);
 }
