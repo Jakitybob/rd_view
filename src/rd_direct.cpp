@@ -1,12 +1,5 @@
 #include "rd_direct.h"
 
-#include <iostream>
-#include <ostream>
-
-#include "rd_display.h"
-#include "rd_error.h"
-#include "global_variables.h"
-
 // Simple stub as functionality is handled behind the scenes currently.
 int REDirect::rd_display(const string &name, const string &type, const string &mode)
 {
@@ -49,7 +42,12 @@ int REDirect::rd_frame_end()
     return RD_OK;
 }
 
-/// TODO: Implement
+/// Implements the midpoint circle algorithm to draw a circle with the desired
+/// radius using the provided coordinates as the midpoint for said circle.
+/// @param center A const float* to an array of 3 variables representing the X, Y, and Z
+///         coordinate of the center of the circle. At present the Z value is ignored.
+/// @param radius The radius of the circle, ie the distance from the center to the
+///         edge of the circle where the points will be drawn.
 int REDirect::rd_circle(const float center[3], float radius)
 {
     // Create our decision variable
@@ -145,6 +143,23 @@ int REDirect::rd_color(const float color[])
 /// TODO: Implement
 int REDirect::rd_fill(const float seed_point[3])
 {
+    // Get the color of the current pixel
+    float color[3]; // Create a float to store the current pixel color in
+    rd_read_pixel(seed_point[0], seed_point[1], color);
+
+    // If the pixel isn't the background color, return
+    if (color[0] != backgroundRed && color[1] != backgroundGreen && color[2] != backgroundBlue)
+        return RD_OK;
+
+    // Otherwise, update the current pixel to the fill color
+    rd_write_pixel(seed_point[0], seed_point[1], new float[3] {drawRed, drawGreen, drawBlue});
+
+    // Recursively call fill on the four connected pixels to the current one
+    rd_fill(new float[3] {seed_point[0] + 1, seed_point[1], seed_point[2]});
+    rd_fill(new float[3] {seed_point[0] - 1, seed_point[1], seed_point[2]});
+    rd_fill(new float[3] {seed_point[0], seed_point[1] + 1, seed_point[2]});
+    rd_fill(new float[3] {seed_point[0], seed_point[1] - 1, seed_point[2]});
+
     return RD_OK;
 }
 
@@ -159,7 +174,6 @@ void REDirect::plot_shallow_line(int startX, int startY, int endX, int endY)
     // Calculate the deltaX and deltaY
     int deltaX = endX - startX;
     int deltaY = endY - startY;
-    int yIncrement = 1; // Used for negative slopes
 
     // Create our decision variable and store the initial value
     int decision = 2 * deltaY - deltaX;

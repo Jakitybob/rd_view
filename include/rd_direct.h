@@ -2,9 +2,14 @@
 #define RD_ENGINE_DIRECT_H
 
 #include "rd_enginebase.h"
-
+#include "rd_display.h"
+#include "rd_error.h"
+#include "global_variables.h"
 #include <string>
 using std::string;
+#include <iostream>
+#include <ostream>
+#include <stack>
 
 // This is a rendering engine that renders directly to the image buffer as
 // primitives come in.  A depth buffer is obviously needed.  Transparency is
