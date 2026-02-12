@@ -179,7 +179,7 @@ void REDirect::plot_shallow_line(int startX, int startY, int endX, int endY)
     int decision = 2 * deltaY - deltaX;
 
     // Step across the x-axis to plot points and see if we should update y
-    for (int x = startX, y = startY; x < endX; x++)
+    for (int x = startX, y = startY; x <= endX; x++)
     {
         rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue});
         if (decision >= 0)
@@ -217,7 +217,7 @@ void REDirect::plot_steep_line(int startX, int startY, int endX, int endY)
     int decision = 2 * deltaX - deltaY;
 
     // Step across the y-axis to plot points and see if we should increment x
-    for (int y = startY, x = startX; y < endY; y++)
+    for (int y = startY, x = startX; y <= endY; y++)
     {
         rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue});
         if (decision >= 0) // If decision >= 0, we should update x.
