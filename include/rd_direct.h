@@ -1,3 +1,14 @@
+/********************************************************************
+CSCI 490J - Assignment 1 - Spring 2026
+Programmer: Jacob Yates
+Date Due: 02/13/2026
+
+Purpose: This class implements simple rendering algorithms and is
+        derived from the RenderEngine class. It draws simple
+        primitives such as lines and circles to the screen as
+        instructed by the drivers and can also handle flood fill.
+*********************************************************************/
+
 #ifndef RD_ENGINE_DIRECT_H
 #define RD_ENGINE_DIRECT_H
 

@@ -1,3 +1,14 @@
+/********************************************************************
+CSCI 490J - Assignment 1 - Spring 2026
+Programmer: Jacob Yates
+Date Due: 02/13/2026
+
+Purpose: This file implements some of the rd_direct rendering
+        functionality derived from rd_enginebase class. This includes
+        drawing lines and circles, as well as flood filling areas to
+        a two-dimensional canvas.
+*********************************************************************/
+
 #include "rd_direct.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
@@ -82,7 +93,7 @@ int REDirect::rd_circle(const float center[3], float radius)
 ///         of the ending point of the line.
 int REDirect::rd_line(const float start[3], const float end[3])
 {
-    // If our slope is less than 1, create a shallow line
+    // If our slope is between -1 and 1 plot a shallow line
     if (abs(end[1] - start[1]) < abs(end[0] - start[0]))
     {
         if (start[0] > end[0]) // If the start is greater than the end, flip the start and end points
@@ -143,12 +154,17 @@ int REDirect::rd_color(const float color[])
 /// TODO: Implement
 int REDirect::rd_fill(const float seed_point[3])
 {
+    // If the seed point is out of range, return
+    if (seed_point[0] < 0 || seed_point[0] >= display_xSize || seed_point[1] < 0 || seed_point[1] >= display_ySize)
+        return RD_OK;
+
     // Get the color of the current pixel
     float color[3]; // Create a float to store the current pixel color in
     rd_read_pixel(seed_point[0], seed_point[1], color);
 
-    // If the pixel isn't the background color, return
-    if (color[0] != backgroundRed && color[1] != backgroundGreen && color[2] != backgroundBlue)
+    // If the pixel isn't the background color, return. Use absolute value subtraction to allow a margin of error that
+    // comes from dealing with floating point numbers from time to time.
+    if (std::abs(color[0] - backgroundRed) > 0.05f || std::abs(color[1] - backgroundGreen) > 0.05f || std::abs(color[2] - backgroundBlue) > 0.05f)
         return RD_OK;
 
     // Otherwise, update the current pixel to the fill color
@@ -171,31 +187,33 @@ int REDirect::rd_fill(const float seed_point[3])
 /// @param endY The Y coordinate to use as the ending point for the line.
 void REDirect::plot_shallow_line(int startX, int startY, int endX, int endY)
 {
-    // Calculate the deltaX and deltaY
+    // Calculate our deltaX, deltaY, and y increment
     int deltaX = endX - startX;
     int deltaY = endY - startY;
+    int yIncrement = 1;
 
-    // Create our decision variable and store the initial value
+    // If our deltaY is negative, make our yIncrement decrement instead and flip the sign of deltaY.
+    if (deltaY < 0)
+    {
+        yIncrement = -1;
+        deltaY = -deltaY;
+    }
+
+    // Create our initial decision variable
     int decision = 2 * deltaY - deltaX;
 
-    // Step across the x-axis to plot points and see if we should update y
+    // Begin the line algorithm stepping through each x and optionally incrementing or decrementing y as we go
     for (int x = startX, y = startY; x <= endX; x++)
     {
-        rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue});
+        rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue}); // Write our current pixel
         if (decision >= 0)
         {
-            // See if we need to increment or decrement y based on deltaY
-            if (deltaY >= 0)
-                y++;
-            else
-                y--;
-
-            // Update our decision variable
-            decision += 2 * abs(deltaY) - 2 * deltaX;
+            y += yIncrement;
+            decision += 2 * (deltaY - deltaX);
         }
         else
         {
-            decision += 2 * abs(deltaY);
+            decision += 2 * deltaY;
         }
     }
 }
@@ -212,6 +230,14 @@ void REDirect::plot_steep_line(int startX, int startY, int endX, int endY)
     // Calculate deltaX and deltaY
     int deltaX = endX - startX;
     int deltaY = endY - startY;
+    int xIncrement = 1;
+
+    // If our deltaX is negative, decrement x instead and negate our deltaX
+    if (deltaX < 0)
+    {
+        xIncrement = -1;
+        deltaX = -deltaX;
+    }
 
     // Create our decision variable and store the initial value
     int decision = 2 * deltaX - deltaY;
@@ -222,17 +248,14 @@ void REDirect::plot_steep_line(int startX, int startY, int endX, int endY)
         rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue});
         if (decision >= 0) // If decision >= 0, we should update x.
         {
-            // See if x should increment or decrement based on deltaX
-            if (deltaX > 0)
-                x++;
-            else
-                x--;
+            // Increment / decrement X accordingly
+            x += xIncrement;
 
             // Update our decision variable
-            decision += 2 * abs(deltaX) - 2 * deltaY;
+            decision += 2 * (deltaX - deltaY);
         }
         else
-            decision += 2 * abs(deltaX);
+            decision += 2 * deltaX;
     }
 }
 
