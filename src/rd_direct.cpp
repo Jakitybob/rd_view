@@ -65,7 +65,7 @@ int REDirect::rd_circle(const float center[3], float radius)
     int decision = 1 - radius;
 
     // Loop across our octant to draw our circle
-    for (int x = 0, y = radius; x < y;)
+    for (int x = 0, y = radius; x <= y;)
     {
         // Plot our points and increment x
         plot_circle(x, y, center[0], center[1]);
@@ -151,30 +151,22 @@ int REDirect::rd_color(const float color[])
     return RD_OK;
 }
 
-/// TODO: Implement
+/// Wrapper function for a recursive four-connected flood fill function that will
+/// use the color of the initial point provided and flood fill all connected pixels
+/// to the draw color.
+/// @param seed_point: A const float array with the XYZ coordinates for the point to flood from.
 int REDirect::rd_fill(const float seed_point[3])
 {
     // If the seed point is out of range, return
     if (seed_point[0] < 0 || seed_point[0] >= display_xSize || seed_point[1] < 0 || seed_point[1] >= display_ySize)
         return RD_OK;
 
-    // Get the color of the current pixel
+    // Get the color of the first pixel to use as our color to flood over
     float color[3]; // Create a float to store the current pixel color in
     rd_read_pixel(seed_point[0], seed_point[1], color);
 
-    // If the pixel isn't the background color, return. Use absolute value subtraction to allow a margin of error that
-    // comes from dealing with floating point numbers from time to time.
-    if (std::abs(color[0] - backgroundRed) > 0.05f || std::abs(color[1] - backgroundGreen) > 0.05f || std::abs(color[2] - backgroundBlue) > 0.05f)
-        return RD_OK;
-
-    // Otherwise, update the current pixel to the fill color
-    rd_write_pixel(seed_point[0], seed_point[1], new float[3] {drawRed, drawGreen, drawBlue});
-
-    // Recursively call fill on the four connected pixels to the current one
-    rd_fill(new float[3] {seed_point[0] + 1, seed_point[1], seed_point[2]});
-    rd_fill(new float[3] {seed_point[0] - 1, seed_point[1], seed_point[2]});
-    rd_fill(new float[3] {seed_point[0], seed_point[1] + 1, seed_point[2]});
-    rd_fill(new float[3] {seed_point[0], seed_point[1] - 1, seed_point[2]});
+    // Start the recursive fill
+    flood_fill(seed_point, color);
 
     return RD_OK;
 }
@@ -279,4 +271,34 @@ void REDirect::plot_circle(int x, int y, int xCenter, int yCenter)
     rd_write_pixel(-y + xCenter, x + yCenter, color);
     rd_write_pixel(y + xCenter, -x + yCenter, color);
     rd_write_pixel(-y + xCenter, -x + yCenter, color);
+}
+
+/// A recursive function that floods all four-connected pixels that match the seed color
+/// that goes until there is nothing left to fill anymore. This can be because it hit a pixel
+/// that doesn't match the seed color, or it ran out of the bounds of the rendered space.
+/// @param seed_point: A const float array with the XYZ coordinates for the point to flood from.
+/// @param seed_color: A const float array with the RGB values of the color to replace.
+void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
+{
+    // If the seed point is out of range, return
+    if (seed_point[0] < 0 || seed_point[0] >= display_xSize || seed_point[1] < 0 || seed_point[1] >= display_ySize)
+        return;
+
+    // Get the color of the current pixel
+    float color[3]; // Create a float to store the current pixel color in
+    rd_read_pixel(seed_point[0], seed_point[1], color);
+
+    // If the pixel isn't the seed color, return. Use absolute value subtraction to allow a margin of error that
+    // comes from dealing with floating point numbers from time to time.
+    if (std::abs(seed_color[0] - color[0]) > 0.01f || std::abs(seed_color[1] - color[1]) > 0.01f || std::abs(seed_color[2] - color[2]) > 0.01f)
+        return;
+
+    // Otherwise, update the current pixel to the fill color
+    rd_write_pixel(seed_point[0], seed_point[1], new float[3] {drawRed, drawGreen, drawBlue});
+
+    // Recursively call fill on the four connected pixels to the current one
+    flood_fill(new float[3] {seed_point[0] + 1, seed_point[1], seed_point[2]}, seed_color);
+    flood_fill(new float[3] {seed_point[0] - 1, seed_point[1], seed_point[2]}, seed_color);
+    flood_fill(new float[3] {seed_point[0], seed_point[1] + 1, seed_point[2]}, seed_color);
+    flood_fill(new float[3] {seed_point[0], seed_point[1] - 1, seed_point[2]}, seed_color);
 }

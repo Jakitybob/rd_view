@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.2)
-project(csci631_project1)
+project(rd_view)
 
 set(CMAKE_CXX_STANDARD 20)
 

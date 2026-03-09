@@ -33,6 +33,7 @@ private:
     void plot_steep_line(int startX, int startY, int endX, int endY);
     void plot_shallow_line(int startX, int startY, int endX, int endY);
     void plot_circle(int x, int y, int xCenter, int yCenter);
+    void flood_fill(const float seed_point[3], float seed_color[3]);
 
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
