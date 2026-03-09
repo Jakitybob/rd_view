@@ -1,7 +1,7 @@
 /********************************************************************
-CSCI 490J - Assignment 1 - Spring 2026
+CSCI 490J - Assignment 2 - Spring 2026
 Programmer: Jacob Yates
-Date Due: 02/13/2026
+Date Due: 03/16/2026
 
 Purpose: This class implements simple rendering algorithms and is
         derived from the RenderEngine class. It draws simple

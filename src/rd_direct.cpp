@@ -1,7 +1,7 @@
 /********************************************************************
 CSCI 490J - Assignment 1 - Spring 2026
 Programmer: Jacob Yates
-Date Due: 02/13/2026
+Date Due: 03/16/2026
 
 Purpose: This file implements some of the rd_direct rendering
         functionality derived from rd_enginebase class. This includes

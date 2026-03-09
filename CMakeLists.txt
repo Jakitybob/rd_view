@@ -30,6 +30,8 @@ add_executable(${PROJECT_NAME}
         include/rd_error.h
         include/rd_display.h
         include/global_variables.h
+        src/rd_vector.cpp
+        include/rd_vector.h
 )
 
 # Link the library to the executable
