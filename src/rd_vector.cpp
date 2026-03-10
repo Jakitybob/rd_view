@@ -10,7 +10,6 @@ Purpose: This class implements a mathematical vector as well as a
 *********************************************************************/
 
 #include "rd_vector.h"
-
 #include <cmath>
 
 /// Default constructor that initializes all components to 0.
@@ -60,6 +59,13 @@ rd_vector rd_vector::operator* (rd_vector v)
     return rd_vector(newX, newY, newZ);
 }
 
+/// @param scalar The scalar to multiply each component by.
+/// @returns The scaled vector.
+rd_vector rd_vector::operator* (float scalar)
+{
+    return rd_vector(x * scalar, y * scalar, z * scalar);
+}
+
 /// @param v The vector to copy onto this one.
 /// @returns A reference to this object which has been updated.
 rd_vector& rd_vector::operator= (const rd_vector &v)
@@ -73,7 +79,14 @@ rd_vector& rd_vector::operator= (const rd_vector &v)
 }
 
 /// @returns The magnitude of the vector.
-float vector::magnitude()
+float rd_vector::magnitude()
 {
     return sqrtf(powf(x, 2) + powf(y, 2) + powf(z, 2));
+}
+
+/// @returns The normalized version of this vector.
+rd_vector rd_vector::normalized()
+{
+    float magnitude = this->magnitude();
+    return rd_vector(x / magnitude, y / magnitude, z / magnitude);
 }

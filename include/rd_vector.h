@@ -23,14 +23,16 @@ public:
     rd_vector(float x, float y, float z);
 
     // Operator overloads
-    rd_vector operator+ (rd_vector v);
-    rd_vector operator- (rd_vector v);
-    float operator^ (rd_vector v);
-    rd_vector operator* (rd_vector v);
-    rd_vector& operator=(const rd_vector& v);
+    rd_vector operator+ (rd_vector v); // Vector + vector
+    rd_vector operator- (rd_vector v); // Vector - vector
+    float operator^ (rd_vector v); // Vector ^ vector (dot product)
+    rd_vector operator* (rd_vector v); // Vector * vector (cross product)
+    rd_vector operator* (float scalar); // Vector * scalar
+    rd_vector& operator=(const rd_vector& v); // Vector = vector
 
     // Functions
     float magnitude();
+    rd_vector normalized();
 
     // Getters / Setters
     float GetX() const { return x; }

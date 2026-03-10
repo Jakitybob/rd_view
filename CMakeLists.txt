@@ -32,6 +32,10 @@ add_executable(${PROJECT_NAME}
         include/global_variables.h
         src/rd_vector.cpp
         include/rd_vector.h
+        include/rd_point.h
+        src/rd_point.cpp
+        include/rd_pointh.cpp
+        include/rd_pointh.h
 )
 
 # Link the library to the executable
