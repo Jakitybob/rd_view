@@ -10,6 +10,7 @@ Purpose: This file implements some of the rd_direct rendering
 *********************************************************************/
 
 #include "rd_direct.h"
+#include "rd_xform.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
 int REDirect::rd_display(const string &name, const string &type, const string &mode)
@@ -26,6 +27,9 @@ int REDirect::rd_format(int xresolution, int yresolution)
 /// Initializes the display for a new frame.
 int REDirect::rd_world_begin()
 {
+    rd_xform matrix;
+    matrix.set_translation(3, 4, 9);
+    matrix.print_matrix();
     rd_disp_init_frame(frameNumber);
     return RD_OK;
 }

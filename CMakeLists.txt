@@ -34,8 +34,10 @@ add_executable(${PROJECT_NAME}
         include/rd_vector.h
         include/rd_point.h
         src/rd_point.cpp
-        include/rd_pointh.cpp
+        src/rd_pointh.cpp
         include/rd_pointh.h
+        src/rd_xform.cpp
+        include/rd_xform.h
 )
 
 # Link the library to the executable

@@ -25,6 +25,9 @@ public:
     rd_pointh(class rd_point point);
     rd_pointh(float x, float y, float z, float w);
 
+    // Operator overloads
+    rd_pointh operator* (class rd_xform matrix);
+
     // Getters / setters
     float get_x() const { return x; }
     float get_y() const { return y; }
