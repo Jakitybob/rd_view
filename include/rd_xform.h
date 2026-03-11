@@ -4,7 +4,9 @@ Programmer: Jacob Yates
 Date Due: 03/16/2026
 
 Purpose: This class implements a 4x4 matrix used in RDView for transform
-        matrices like translation, rotation, and scaling.
+        matrices like translation, rotation, and scaling. It contains
+        operations to multiply matrices together with one another and
+        with homogenous points.
 *********************************************************************/
 
 #ifndef RD_VIEW_RD_XFORM_H
@@ -21,6 +23,7 @@ public:
 
     // Operator Overloads
     rd_xform operator* (rd_xform m2);
+    class rd_pointh operator* (class rd_pointh point);
     rd_xform& operator= (rd_xform m2);
 
     // Member functions
@@ -32,7 +35,7 @@ public:
     void set_identity();
 
     // Debug / Testing
-    void print_matrix();
+    void print_matrix() const;
 };
 
 

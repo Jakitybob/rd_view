@@ -27,9 +27,6 @@ int REDirect::rd_format(int xresolution, int yresolution)
 /// Initializes the display for a new frame.
 int REDirect::rd_world_begin()
 {
-    rd_xform matrix;
-    matrix.set_translation(3, 4, 9);
-    matrix.print_matrix();
     rd_disp_init_frame(frameNumber);
     return RD_OK;
 }

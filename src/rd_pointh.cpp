@@ -9,6 +9,7 @@ Purpose: This class implements a simple 3D homogenous point with a number
 *********************************************************************/
 
 #include "rd_pointh.h"
+#include <stdexcept>
 #include "rd_point.h"
 
 /// @returns A homogenous point initialized to the origin.
@@ -50,4 +51,21 @@ rd_pointh::rd_pointh(float x, float y, float z, float w)
     this->y = y;
     this->z = z;
     this->w = w;
+}
+
+float& rd_pointh::operator[](int index)
+{
+    switch (index)
+    {
+        case 0:
+            return x;
+        case 1:
+            return y;
+        case 2:
+            return z;
+        case 3:
+            return w;
+        default:
+            throw std::out_of_range("Index cannot exceed 3 on a homogenous point.");
+    }
 }

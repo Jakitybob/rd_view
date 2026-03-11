@@ -27,6 +27,7 @@ public:
 
     // Operator overloads
     rd_pointh operator* (class rd_xform matrix);
+    float& operator[] (int index);
 
     // Getters / setters
     float get_x() const { return x; }
