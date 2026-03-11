@@ -11,6 +11,7 @@ Purpose: This class implements a 4x4 matrix used in RDView for transform
 
 #ifndef RD_VIEW_RD_XFORM_H
 #define RD_VIEW_RD_XFORM_H
+#include <initializer_list>
 
 class rd_xform
 {
@@ -20,6 +21,7 @@ private:
 public:
     // Constructors
     rd_xform();
+    rd_xform(std::initializer_list<float> values);
 
     // Operator Overloads
     rd_xform operator* (rd_xform m2);
@@ -33,6 +35,9 @@ public:
     void set_yz_rotation(float angle); // middle
     void set_zx_rotation(float angle); // spread out
     void set_identity();
+
+    // Setter function
+    void set_element(int y, int x, float element);
 
     // Debug / Testing
     void print_matrix() const;

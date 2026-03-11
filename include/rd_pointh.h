@@ -11,7 +11,6 @@ Purpose: This class implements a simple 3D homogenous point with a number
 #ifndef RD_VIEW_RD_POINTH_H
 #define RD_VIEW_RD_POINTH_H
 
-
 class rd_pointh
 {
 private:

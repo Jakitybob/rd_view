@@ -30,10 +30,16 @@ class REDirect: public RenderEngine
 {
 private:
     int frameNumber = 0; // Current frame
+
+    // 2D Rendering functions
     void plot_steep_line(int startX, int startY, int endX, int endY);
     void plot_shallow_line(int startX, int startY, int endX, int endY);
     void plot_circle(int x, int y, int xCenter, int yCenter);
     void flood_fill(const float seed_point[3], float seed_color[3]);
+
+    // Graphics Pipeline functions
+    void calculate_world_to_clip();
+    void calculate_clip_to_device();
 
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
@@ -42,6 +48,11 @@ public:
     int rd_world_end() override;
     int rd_frame_begin(int frame_no) override;
     int rd_frame_end() override;
+    int rd_camera_eye(const float eyepoint[3]) override;
+    int rd_camera_at(const float atpoint[3]) override;
+    int rd_camera_up(const float up[3]) override;
+    int rd_camera_fov(float fov) override;
+    int rd_clipping(float znear, float zfar) override;
     int rd_circle(const float center[3], float radius) override;
     int rd_line(const float start[3], const float end[3]) override;
     int rd_point(const float p[3]) override;

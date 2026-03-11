@@ -10,6 +10,9 @@ Purpose: This file implements some of the rd_direct rendering
 *********************************************************************/
 
 #include "rd_direct.h"
+
+#include <cmath>
+#include "rd_vector.h"
 #include "rd_xform.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
@@ -27,6 +30,21 @@ int REDirect::rd_format(int xresolution, int yresolution)
 /// Initializes the display for a new frame.
 int REDirect::rd_world_begin()
 {
+    // Make sure our transform stack is empty, and empty it if not
+    while (!xform_stack.empty()) // It should always be empty but better safe than sorry
+        xform_stack.pop();
+
+    // Push on a fresh identity matrix to the transform stack
+    rd_xform xform;
+    xform_stack.push(xform);
+
+    // TODO:
+    // * Clipping -> Device
+
+    // Calculate our graphics pipeline matrices
+    calculate_world_to_clip();
+
+    // Initialize the frame and return OK
     rd_disp_init_frame(frameNumber);
     return RD_OK;
 }
@@ -51,6 +69,58 @@ int REDirect::rd_frame_begin(int frame_no)
 int REDirect::rd_frame_end()
 {
     rd_disp_end_frame();
+    return RD_OK;
+}
+
+/// Store the camera's position into our global variables.
+/// @param eyepoint An array of 3 floats that represent the XYZ of the camera position.
+int REDirect::rd_camera_eye(const float eyepoint[3])
+{
+    // Copy over the data to our global array
+    camera_eye.set_x(eyepoint[0]);
+    camera_eye.set_y(eyepoint[1]);
+    camera_eye.set_z(eyepoint[2]);
+
+    return RD_OK;
+}
+
+/// Store the camera's look at position into our global variables.
+/// @param atpoint An array of 3 floats that represent the XYZ coordinate of where the camera is looking at.
+int REDirect::rd_camera_at(const float atpoint[3])
+{
+    // Copy over the data to our global array
+    camera_at.set_x(atpoint[0]);
+    camera_at.set_y(atpoint[1]);
+    camera_at.set_z(atpoint[2]);
+
+    return RD_OK;
+}
+
+/// Store the camera's up vector into our global variables.
+/// @param up An array of 3 floats that represent the up vector of the camera.
+int REDirect::rd_camera_up(const float up[3])
+{
+    // Copy the data to our global array
+    camera_up.set_x(up[0]);
+    camera_up.set_y(up[1]);
+    camera_up.set_z(up[2]);
+
+    return RD_OK;
+}
+
+/// Store the FOV into our global variables.
+/// @param fov The float to set the camera's field of view to.
+int REDirect::rd_camera_fov(float fov)
+{
+    // Store our data into our global variable
+    camera_fov = fov;
+
+    return RD_OK;
+}
+
+// TODO: IMPLEMENT
+int REDirect::rd_clipping(float znear, float zfar)
+{
     return RD_OK;
 }
 
@@ -302,4 +372,48 @@ void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
     flood_fill(new float[3] {seed_point[0] - 1, seed_point[1], seed_point[2]}, seed_color);
     flood_fill(new float[3] {seed_point[0], seed_point[1] + 1, seed_point[2]}, seed_color);
     flood_fill(new float[3] {seed_point[0], seed_point[1] - 1, seed_point[2]}, seed_color);
+}
+
+/// A function that calculates the world to clip transformation matrix and
+/// stores it our into our global world to clip matrix variable.
+void REDirect::calculate_world_to_clip()
+{
+    // Create our camera vectors using its position, look-at, and up vector.
+    rd_vector eye = rd_vector(camera_eye.get_x(), camera_eye.get_y(), camera_eye.get_z());
+    rd_vector forward = (camera_at - camera_eye).normalized();
+    rd_vector right = (rd_vector(0, 1, 0) * forward).normalized(); // Use world up to calculate right
+    rd_vector up = forward * right;
+
+    // Create the view matrix using these vectors
+    rd_xform view_matrix = {
+        right.GetX(), right.GetY(), right.GetZ(), -(right ^ eye),
+        up.GetX(), up.GetY(), up.GetZ(), -(up ^ eye),
+        forward.GetX(), forward.GetY(), forward.GetZ(), -(forward ^ eye),
+        0, 0, 0, 1
+    };
+
+    // Create our perspective transform matrix
+    float fov_scale = 1/std::tanf((camera_fov/2) * (float)(std::numbers::pi/180)); // Our FOV scalar
+    rd_xform perspective_matrix = {
+        fov_scale, 0, 0, 0,
+        0, fov_scale, 0, 0,
+        0, 0, -(far_clip/(far_clip - near_clip)), -1,
+        0, 0, -((far_clip * near_clip)/(far_clip - near_clip)), 0
+    };
+
+    // Store our final world to clip matrix by finding the cross product perspective x view
+    world_to_clip = perspective_matrix * view_matrix;
+}
+
+/// A function that calculates the clip to device transformation matrix
+/// and stores it directly into our global matrix variable
+void REDirect::calculate_clip_to_device()
+{
+    // Create our clip to device matrix and store it into our gobal variable
+    clip_to_device = {
+        (float)(display_xSize / 2), 0, 0, (float)(display_xSize / 2),
+        0, (float)(display_ySize / 2), 0, (float)(display_ySize / 2),
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
 }

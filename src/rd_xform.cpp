@@ -21,6 +21,17 @@ rd_xform::rd_xform()
     set_identity();
 }
 
+rd_xform::rd_xform(std::initializer_list<float> values)
+{
+    if (values.size() != 16)
+        throw std::runtime_error("Transform matrices need 16 values.");
+
+    auto iterator = values.begin();
+    for (int rows = 0; rows < 4; rows++)
+        for (int cols = 0; cols < 4; cols++)
+            matrix[rows][cols] = *iterator++;
+}
+
 /// @param m2 The matrix being multiplied with this matrix.
 /// @returns The new matrix found by multiplying the two matrices together.
 rd_xform rd_xform::operator*(rd_xform m2)
@@ -170,6 +181,20 @@ void rd_xform::set_identity()
     matrix[1][1] = 1;
     matrix[2][2] = 1;
     matrix[3][3] = 1;
+}
+
+/// Sets the specified element in the matrix in row x and column y to
+/// the desired float.
+/// @param y The row from top to bottom to update.
+/// @param x The column from left to right to update.
+void rd_xform::set_element(int y, int x, float element)
+{
+    // Make sure our values are in range
+    if (x >= 4 || y >= 4)
+        throw std::out_of_range("The transformation matrices are only 4x4.");
+
+    // Update the element in our matrix
+    matrix[y][x] = element;
 }
 
 /// Prints out the matrix to standard output. Used for debugging
