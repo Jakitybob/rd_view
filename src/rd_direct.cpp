@@ -293,12 +293,15 @@ int REDirect::rd_point(const float p[3])
     return RD_OK;
 }
 
+///
 int REDirect::rd_cone(float height, float radius, float thetamax)
 {
     return RD_OK;
 }
 
-///
+/// Draws a cube centered about the origin with a length and height of one on each
+/// side. Each line of the cube is passed into the line pipeline where it will be
+/// transformed and sent through the world -> device pipeline.
 int REDirect::rd_cube()
 {
     // Draw the bottom face of the square
@@ -322,13 +325,38 @@ int REDirect::rd_cube()
     return RD_OK;
 }
 
+///
 int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
 {
     return RD_OK;
 }
 
+///
 int REDirect::rd_disk(float height, float radius, float theta)
 {
+    return RD_OK;
+}
+
+///
+int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
+{
+    // Store our current transform on the stack
+    rd_xform_push();
+
+    // Render a circle on the XY plane
+    render_circle(radius);
+
+    // Rotate so that the circle draws about the YZ plane
+    rd_rotate_yz(90);
+    render_circle(radius);
+
+    // Rotate so that the circle draws about the ZX plane
+    rd_rotate_zx(90);
+    render_circle(radius);
+
+    // Pop the stack so the transform returns to its prior state
+    rd_xform_pop();
+
     return RD_OK;
 }
 
@@ -579,4 +607,19 @@ void REDirect::render_line(rd_pointh point, bool should_draw)
 
     // Update our last vertex variable either way
     last_vertex = point;
+}
+
+///
+void REDirect::render_circle(float radius)
+{
+    // Create a float for our angle
+    float angle = 0; // In radians
+
+    render_line(rd_pointh(radius, angle, 0), false);
+    for (int index = 1; index <= 32; index++)
+    {
+        angle = index * 2 * M_PI/32;
+        rd_pointh point(radius * cosf(angle), radius * sinf(angle), 0);
+        render_line(point, true);
+    }
 }

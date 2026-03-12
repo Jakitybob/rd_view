@@ -42,6 +42,9 @@ private:
     bool check_point_clip(class rd_pointh point);
     void render_line(class rd_pointh point, bool should_draw);
 
+    // Primitive Rendering functions
+    void render_circle(float radius);
+
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
     int rd_format(int xresolution, int yresolution) override;
@@ -68,6 +71,7 @@ public:
     int rd_cube(void) override;
     int rd_cylinder(float radius, float zmin, float zmax, float thetamax) override;
     int rd_disk(float height, float radius, float theta) override;
+    int rd_sphere(float radius, float zmin, float zmax, float thetamax) override;
     int rd_background(const float color[]) override;
     int rd_color(const float color[]) override;
     int rd_fill(const float seed_point[3]) override;
