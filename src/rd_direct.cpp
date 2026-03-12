@@ -118,12 +118,21 @@ int REDirect::rd_camera_fov(float fov)
     return RD_OK;
 }
 
-// TODO: IMPLEMENT
+/// Stores the clipping planes into global variables.
+/// @param znear The value of the near clipping plane.
+/// @param zfar The value of the far clipping plane.
 int REDirect::rd_clipping(float znear, float zfar)
 {
+    // Store our near and far clipping planes globally
+    near_clip = znear;
+    far_clip = zfar;
+
     return RD_OK;
 }
 
+/// Adds an XYZ translation to the current transformation in the
+/// global variables.
+/// @param offset An array of 3 floats to translate object space by.
 int REDirect::rd_translate(const float offset[3])
 {
     // Create the translation matrix with our provided translation values
@@ -131,11 +140,14 @@ int REDirect::rd_translate(const float offset[3])
     translation.set_translation(offset[0], offset[1], offset[2]);
 
     // Multiply this translation matrix by our current transform and store it back into the global transform
-    current_transform = translation * current_transform;
+    current_transform = current_transform * translation;
 
     return RD_OK;
 }
 
+/// Adds a scalar transformation to the current transformation in the
+/// global variables.
+/// @param scale_factor An array of 3 floats that contain the XYZ scalars.
 int REDirect::rd_scale(const float scale_factor[3])
 {
     // Create our scale matrix with our provided scalar values
@@ -143,11 +155,14 @@ int REDirect::rd_scale(const float scale_factor[3])
     scale.set_scale(scale_factor[0], scale_factor[1], scale_factor[2]);
 
     // Multiply this scaling matrix by our current transform and store it back into the global transform
-    current_transform = scale * current_transform;
+    current_transform = current_transform * scale;
 
     return RD_OK;
 }
 
+/// Adds a rotation about the Z-axis to the current transformation
+/// in the global variable transform.
+/// @param angle The angle in degrees to rotate by.
 int REDirect::rd_rotate_xy(float angle)
 {
     // Create our XY rotation matrix with our angle
@@ -155,11 +170,14 @@ int REDirect::rd_rotate_xy(float angle)
     rotation.set_xy_rotation(angle);
 
     // Multiply this rotation matrix by our current transform and store it back into the global transform
-    current_transform = rotation * current_transform;
+    current_transform = current_transform * rotation;
 
     return RD_OK;
 }
 
+/// Adds a rotation about the X-axis to the current transformation
+/// in the global variable transform.
+/// @param angle The angle in degrees to rotate by.
 int REDirect::rd_rotate_yz(float angle)
 {
     // Create our YZ rotation matrix with our angle
@@ -167,11 +185,14 @@ int REDirect::rd_rotate_yz(float angle)
     rotation.set_yz_rotation(angle);
 
     // Multiply this rotation matrix by our current transform and store it back into the global transform
-    current_transform = rotation * current_transform;
+    current_transform = current_transform * rotation;
 
     return RD_OK;
 }
 
+/// Adds a rotation about the Y-axis to the current transformation
+/// in the global variable transform.
+/// @param angle The angle in degrees to rotate by.
 int REDirect::rd_rotate_zx(float angle)
 {
     // Create our ZX rotation matrix with our angle
@@ -179,11 +200,13 @@ int REDirect::rd_rotate_zx(float angle)
     rotation.set_zx_rotation(angle);
 
     // Multiply this rotation matrix by our current transform and store it back into the global transform
-    current_transform = rotation * current_transform;
+    current_transform = current_transform * rotation;
 
     return RD_OK;
 }
 
+/// Pushes the current transform onto the top of the
+/// transformation stack.
 int REDirect::rd_xform_push()
 {
     // Push the current transform onto our transform stack
@@ -192,6 +215,9 @@ int REDirect::rd_xform_push()
     return RD_OK;
 }
 
+/// Sets the current transform to whatever is on top
+/// of the transformation stack, then pops the top
+/// of the stack off.
 int REDirect::rd_xform_pop()
 {
     // Pop the transform from the top of the stack and set it as our current transform
@@ -233,8 +259,9 @@ int REDirect::rd_circle(const float center[3], float radius)
     return RD_OK;
 }
 
-/// Draws a line on the screen using a derivative of Bresenham's line algorithm. This function
-/// calls plot_shallow_line or plot_steep_line based on the slope.
+/// Renders a line in 3D space from the starting point to the ending point. The points
+/// are passed one by one into the line pipeline, and the second point draws the line between
+/// the two.
 /// @param start A const float* to an array of 3 values representing the x, y, z coordinates
 ///         of the starting point of the line.
 /// @param end A const float* to an array of 3 values representing the x, y, z coordinates
@@ -252,10 +279,9 @@ int REDirect::rd_line(const float start[3], const float end[3])
     return RD_OK;
 }
 
-// TODO: UPDATE DOCUMENTATION
-/// Draws a single pixel onto the screen at the desired x, y location.
-/// @param p A float* to an array of 3 values representing the x, y, and z coordinate of the point.
-///         Note that the z value is currently ignored.
+/// Draws a single pixel onto the screen, running the point through
+/// the rendering pipeline and drawing it accordingly.
+/// @param p The point in world space to draw the point.
 int REDirect::rd_point(const float p[3])
 {
     // Convert our point into a homogenous point
@@ -264,6 +290,45 @@ int REDirect::rd_point(const float p[3])
     // Pass our point through the point pipeline to render it
     render_point(point);
 
+    return RD_OK;
+}
+
+int REDirect::rd_cone(float height, float radius, float thetamax)
+{
+    return RD_OK;
+}
+
+///
+int REDirect::rd_cube()
+{
+    // Draw the bottom face of the square
+    rd_line(new float[3] {-1, -1, -1}, new float[3] {-1, -1, 1});
+    rd_line(new float[3] {-1, -1, 1}, new float[3] {1, -1, 1});
+    rd_line(new float[3] {1, -1, 1}, new float[3] {1, -1, -1});
+    rd_line(new float[3] {1, -1, -1}, new float[3] {-1, -1, -1});
+
+    // Draw the top face of the square
+    rd_line(new float[3] {1, 1, 1}, new float[3] {1, 1, -1});
+    rd_line(new float[3] {1, 1, -1}, new float[3] {-1, 1, -1});
+    rd_line(new float[3] {-1, 1, -1}, new float[3] {-1, 1, 1});
+    rd_line(new float[3] {-1, 1, 1}, new float[3] {1, 1, 1});
+
+    // Connect the top and the bottom
+    rd_line(new float[3] {1, 1, 1}, new float[3] {1, -1, 1});
+    rd_line(new float[3] {-1, 1, 1}, new float[3] {-1, -1, 1});
+    rd_line(new float[3] {-1, 1, -1}, new float[3] {-1, -1, -1});
+    rd_line(new float[3] {1, 1, -1}, new float[3] {1, -1, -1});
+
+    return RD_OK;
+}
+
+int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
+{
+    return RD_OK;
+}
+
+int REDirect::rd_disk(float height, float radius, float theta)
+{
     return RD_OK;
 }
 
@@ -313,86 +378,6 @@ int REDirect::rd_fill(const float seed_point[3])
     flood_fill(seed_point, color);
 
     return RD_OK;
-}
-
-/// Plots a line with a slope between 1 and -1 from the starting point to the
-/// ending point using a derivative version of Bresenham's line algorithm.
-/// @param startX The X coordinate to use as the starting point for the line.
-/// @param startY The Y coordinate to use as the starting point for the line.
-/// @param endX The X coordinate to use as the ending point for the line.
-/// @param endY The Y coordinate to use as the ending point for the line.
-void REDirect::plot_shallow_line(int startX, int startY, int endX, int endY)
-{
-    // Calculate our deltaX, deltaY, and y increment
-    int deltaX = endX - startX;
-    int deltaY = endY - startY;
-    int yIncrement = 1;
-
-    // If our deltaY is negative, make our yIncrement decrement instead and flip the sign of deltaY.
-    if (deltaY < 0)
-    {
-        yIncrement = -1;
-        deltaY = -deltaY;
-    }
-
-    // Create our initial decision variable
-    int decision = 2 * deltaY - deltaX;
-
-    // Begin the line algorithm stepping through each x and optionally incrementing or decrementing y as we go
-    for (int x = startX, y = startY; x <= endX; x++)
-    {
-        rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue}); // Write our current pixel
-        if (decision >= 0)
-        {
-            y += yIncrement;
-            decision += 2 * (deltaY - deltaX);
-        }
-        else
-        {
-            decision += 2 * deltaY;
-        }
-    }
-}
-
-/// Plots a line with a slope greater than 1 or less than -1 from the starting points
-/// to the ending points using a derivative version of Bresenham's line algorithm.
-/// @param startX The X value to use as the starting point for the line.
-/// @param startY The Y value to use as the starting point for the line.
-/// @param endX The X value to use as the ending point for the line.
-/// @param endY The Y value to use as the ending point for the line, used as
-///         the stop for the included for loop.
-void REDirect::plot_steep_line(int startX, int startY, int endX, int endY)
-{
-    // Calculate deltaX and deltaY
-    int deltaX = endX - startX;
-    int deltaY = endY - startY;
-    int xIncrement = 1;
-
-    // If our deltaX is negative, decrement x instead and negate our deltaX
-    if (deltaX < 0)
-    {
-        xIncrement = -1;
-        deltaX = -deltaX;
-    }
-
-    // Create our decision variable and store the initial value
-    int decision = 2 * deltaX - deltaY;
-
-    // Step across the y-axis to plot points and see if we should increment x
-    for (int y = startY, x = startX; y <= endY; y++)
-    {
-        rd_write_pixel(x, y, new float[3] {drawRed, drawGreen, drawBlue});
-        if (decision >= 0) // If decision >= 0, we should update x.
-        {
-            // Increment / decrement X accordingly
-            x += xIncrement;
-
-            // Update our decision variable
-            decision += 2 * (deltaX - deltaY);
-        }
-        else
-            decision += 2 * deltaX;
-    }
 }
 
 /// Plots eight points along the boundary of a circle given an x and y coordinate
@@ -455,18 +440,18 @@ void REDirect::calculate_world_to_clip()
     rd_vector world_up(camera_up);
     rd_vector forward = (camera_at - camera_eye).normalized();
     rd_vector right = (world_up * forward).normalized();
-    rd_vector up = right * forward;
+    rd_vector up = (right * forward).normalized();
 
-    // Create the view matrix using these vectors
+    // Create the view matrix using the forward, right, and up vectors from the camera
     rd_xform view_matrix = {
-        right.GetX(), up.GetX(), forward.GetX(), 0,
-        right.GetY(), up.GetY(), forward.GetY(), 0,
-        right.GetZ(), up.GetZ(), forward.GetZ(), 0,
-        -(right ^ camera_eye), -(up ^ camera_eye), -(forward ^ camera_eye), 1
+        right.GetX(), right.GetY(), right.GetZ(), -(right ^ camera_eye),
+        up.GetX(), up.GetY(), up.GetZ(), -(up ^ camera_eye),
+        forward.GetX(), forward.GetY(), forward.GetZ(), -(forward ^ camera_eye),
+        0, 0, 0, 1
     };
 
     // Create our perspective transform matrix
-    float fov_scale = tanf(camera_fov / 2 * std::numbers::pi / 180);
+    float fov_scale = tanf((camera_fov / 2) * (std::numbers::pi / 180));
     float aspect_ratio = display_xSize / display_ySize;
     rd_xform perspective_matrix = {
         1/(aspect_ratio * fov_scale), 0, 0, 0,
@@ -485,8 +470,8 @@ void REDirect::calculate_clip_to_device()
 {
     // Create our clip to device matrix and store it into our gobal variable
     clip_to_device = {
-        (float)(display_xSize / 2), 0, 0, (float)(display_xSize / 2),
-        0, -(float)(display_ySize / 2), 0, (float)(display_ySize / 2),
+        (float)(display_ySize / 2), 0, 0, (float)(display_xSize / 2),
+        0, (float)(display_ySize / 2), 0, (float)(display_ySize / 2),
         0, 0, 0.5, 0.5,
         0, 0, 0, 1
     };
@@ -522,6 +507,10 @@ void REDirect::render_point(rd_pointh point)
     rd_write_pixel((int)(cartesian_point.get_x()), (int)(cartesian_point.get_y()), new float[3] { drawRed, drawGreen, drawBlue });
 }
 
+/// Creates boundary coordinates from Brinn's clipping algorithm and if any of the
+/// boundary coordinates are negative, returns true to clip the point.
+/// @param point A homogeneous point to check whether it is in bounds.
+/// @returns True if the point should be clipped and false if not.
 bool REDirect::check_point_clip(class rd_pointh point)
 {
     // Create a simple boundary coordinate array
@@ -539,7 +528,12 @@ bool REDirect::check_point_clip(class rd_pointh point)
     return false;
 }
 
-void REDirect::render_line(class rd_pointh point, bool should_draw)
+/// Runs the specified point through world->device transformation pipeline
+/// and, if the flag is on, draws a line using the DDA algorithm from the
+/// last vertex passed in to the current vertex.
+/// @param point The homogeneous point to plot as a vertex.
+/// @param should_draw Whether a line should be drawn between this vertex and the last.
+void REDirect::render_line(rd_pointh point, bool should_draw)
 {
     // Run our point through our current transformations
     point = current_transform * point;
@@ -551,10 +545,36 @@ void REDirect::render_line(class rd_pointh point, bool should_draw)
     if (should_draw)
     {
         // Convert the last vertex and this vertex to device coordinates
-        rd_pointh last_vertex_device = clip_to_device * last_vertex;
-        rd_pointh current_vertex_device = clip_to_device * last_vertex;
+        rd_pointc start_vertex = rd_pointc(clip_to_device * last_vertex);
+        rd_pointc end_vertex = rd_pointc(clip_to_device * point);
 
+        // Calculate dX and dY, the difference in endpoints
+        int dX = abs((int)start_vertex.get_x() - (int)end_vertex.get_x());
+        int dY = abs((int)start_vertex.get_y() - (int)end_vertex.get_y());
 
+        // Store our number of steps based on the max between dX and dY
+        const int NSTEPS = std::max(dX, dY);
+
+        // Set our initial variables based on the start vertex
+        float x = start_vertex.get_x();
+        float y = start_vertex.get_y();
+        float z = start_vertex.get_z();
+
+        // Set our d variables
+        float dx = (end_vertex.get_x() - x) / NSTEPS;
+        float dy = (end_vertex.get_y() - y) / NSTEPS;
+        float dz = (end_vertex.get_z() - z) / NSTEPS;
+
+        // Draw our line
+        for (int index = 0; index < NSTEPS; index++)
+        {
+            x = start_vertex.get_x() + index * dx;
+            y = start_vertex.get_y() + index * dy;
+            z = start_vertex.get_z() + index * dz;
+
+            // Plot our pixel on the screen at the x and y
+            rd_write_pixel((int)x, int(y), new float[3] { drawRed, drawGreen, drawBlue });
+        }
     }
 
     // Update our last vertex variable either way

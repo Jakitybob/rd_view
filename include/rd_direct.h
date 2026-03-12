@@ -31,21 +31,15 @@ class REDirect: public RenderEngine
 private:
     int frameNumber = 0; // Current frame
 
-    // 2D Rendering functions
-    void plot_steep_line(int startX, int startY, int endX, int endY);
-    void plot_shallow_line(int startX, int startY, int endX, int endY);
+    // 2D Rendering functions (basically deprecated)
     void plot_circle(int x, int y, int xCenter, int yCenter);
     void flood_fill(const float seed_point[3], float seed_color[3]);
 
     // Graphics Pipeline functions
     void calculate_world_to_clip();
     void calculate_clip_to_device();
-
-    // Point pipeline
     void render_point(class rd_pointh point);
     bool check_point_clip(class rd_pointh point);
-
-    // Line pipeline
     void render_line(class rd_pointh point, bool should_draw);
 
 public:
@@ -70,6 +64,10 @@ public:
     int rd_circle(const float center[3], float radius) override;
     int rd_line(const float start[3], const float end[3]) override;
     int rd_point(const float p[3]) override;
+    int rd_cone(float height, float radius, float thetamax) override;
+    int rd_cube(void) override;
+    int rd_cylinder(float radius, float zmin, float zmax, float thetamax) override;
+    int rd_disk(float height, float radius, float theta) override;
     int rd_background(const float color[]) override;
     int rd_color(const float color[]) override;
     int rd_fill(const float seed_point[3]) override;

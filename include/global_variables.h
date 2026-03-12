@@ -41,7 +41,7 @@ static float far_clip = 1.0e+09;
 
 // Transformation related variables
 static std::stack<rd_xform> xform_stack;
-static rd_pointh last_vertex; // The last vertex moved to in the line pipeline
+static rd_pointh last_vertex; // The last vertex moved to in the line pipeline, in clip coordinates
 
 // Global variable for frame number
 static int frame_number;
