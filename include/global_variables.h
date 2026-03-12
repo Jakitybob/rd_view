@@ -42,6 +42,7 @@ static float far_clip = 1.0e+09;
 // Transformation related variables
 static std::stack<rd_xform> xform_stack;
 static rd_pointh last_vertex; // The last vertex moved to in the line pipeline, in clip coordinates
+static int NUM_SEGMENTS = 20; // The number of segments to use for round objects, default 20
 
 // Global variable for frame number
 static int frame_number;

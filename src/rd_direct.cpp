@@ -325,9 +325,34 @@ int REDirect::rd_cube()
     return RD_OK;
 }
 
-///
+/// Draws a cylinder of the given radius with height zmax - zmin.
+/// @param radius The radius of the cylinder.
+/// @param zmin The z-coordinate of the bottom of the cylinder.
+/// @param zmax The z-coordinate of the top of the cylinder.
+/// @param thetamax UNUSED.
 int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
 {
+    // Manually draw the top circle and draw extra line segments down to the bottom circle
+    float angle = 0; // In radians
+
+    // Draw each segment's face along the edge of the circles
+    for (int index = 1; index <= NUM_SEGMENTS; index++)
+    {
+        // Calculate the end point of this face at the top of the cylinder
+        rd_pointh end_point(radius * cosf(angle), radius * sinf(angle), zmax);
+
+        // Put the initial point of the face into the pipeline but don't draw anything yet
+        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmin), false);
+
+        // Update the angle to the next step
+        angle = index * 2 * M_PI/NUM_SEGMENTS;
+
+        // Plot the three edges of the rectangle
+        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmin), true);
+        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmax), true);
+        render_line(end_point, true);
+    }
+
     return RD_OK;
 }
 
@@ -337,22 +362,28 @@ int REDirect::rd_disk(float height, float radius, float theta)
     return RD_OK;
 }
 
-///
+/// Draws three circles in 3D space, with one on the XY plane, one on the
+/// YZ plane, and a third on the ZX plane. A simple representation of a sphere
+/// that will be redone shortly for assignment 3.
+/// @param radius The radius of the sphere.
+/// @param zmin UNUSED.
+/// @param zmax UNUSED.
+/// @param thetamax UNUSED.
 int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
 {
     // Store our current transform on the stack
     rd_xform_push();
 
     // Render a circle on the XY plane
-    render_circle(radius);
+    render_circle(radius, 0);
 
     // Rotate so that the circle draws about the YZ plane
     rd_rotate_yz(90);
-    render_circle(radius);
+    render_circle(radius, 0);
 
     // Rotate so that the circle draws about the ZX plane
     rd_rotate_zx(90);
-    render_circle(radius);
+    render_circle(radius, 0);
 
     // Pop the stack so the transform returns to its prior state
     rd_xform_pop();
@@ -609,17 +640,21 @@ void REDirect::render_line(rd_pointh point, bool should_draw)
     last_vertex = point;
 }
 
-///
-void REDirect::render_circle(float radius)
+/// Renders a simple circle in 3D space, using the line rendering pipeline to
+/// draw a continuous set of line segments around the radius of the circle.
+/// @param radius A float that represents the radius of the circle.
+/// @param z The z-coordinate of the circle.
+void REDirect::render_circle(float radius, float z)
 {
     // Create a float for our angle
     float angle = 0; // In radians
 
-    render_line(rd_pointh(radius, angle, 0), false);
-    for (int index = 1; index <= 32; index++)
+    // Pass our point into the line pipeline but only move as this is an initial point
+    render_line(rd_pointh(radius, angle, z), false);
+    for (int index = 1; index <= NUM_SEGMENTS; index++)
     {
-        angle = index * 2 * M_PI/32;
-        rd_pointh point(radius * cosf(angle), radius * sinf(angle), 0);
-        render_line(point, true);
+        angle = index * 2 * M_PI/NUM_SEGMENTS;
+        rd_pointh point(radius * cosf(angle), radius * sinf(angle), z);
+        render_line(point, true); // Draw every point in the loop
     }
 }

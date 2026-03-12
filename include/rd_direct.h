@@ -43,7 +43,7 @@ private:
     void render_line(class rd_pointh point, bool should_draw);
 
     // Primitive Rendering functions
-    void render_circle(float radius);
+    void render_circle(float radius, float z);
 
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
