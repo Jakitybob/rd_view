@@ -67,6 +67,9 @@ public:
     int rd_circle(const float center[3], float radius) override;
     int rd_line(const float start[3], const float end[3]) override;
     int rd_point(const float p[3]) override;
+    int rd_pointset(const string & vertex_type, int nvertex, const vector<float> & vertex) override;
+    int rd_polyset(const string & vertex_type, int nvertex, const vector<float> & vertex,
+                            int nface,   const vector<int> & face) override;
     int rd_cone(float height, float radius, float thetamax) override;
     int rd_cube(void) override;
     int rd_cylinder(float radius, float zmin, float zmax, float thetamax) override;

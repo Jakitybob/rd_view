@@ -293,9 +293,39 @@ int REDirect::rd_point(const float p[3])
     return RD_OK;
 }
 
+int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<float> &vertex)
+{
+    return RD_OK;
+}
+
+int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<float> &vertex, int nface, const vector<int> &face)
+{
+    return RD_OK;
+}
+
 ///
+/// @param height The height of the cone.
+/// @param radius The radius of the base of the cone.
+/// @param thetamax UNUSED.
 int REDirect::rd_cone(float height, float radius, float thetamax)
 {
+    // Create our angle to use while creating segments
+    float angle = 0; // In radians
+
+    // Draw each segment's face along the edge of the circle at the base
+    for (int index = 1; index <= NUM_SEGMENTS; index++)
+    {
+        // Put the initial point of the face into the pipeline but don't draw anything yet
+        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), 0), false);
+
+        // Update the angle to the next step
+        angle = index * 2 * M_PI/NUM_SEGMENTS;
+
+        // Plot the line of the base and the line to the tip of the cone
+        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), 0), true);
+        render_line(rd_pointh(0, 0, height), true);
+    }
+
     return RD_OK;
 }
 
@@ -332,7 +362,7 @@ int REDirect::rd_cube()
 /// @param thetamax UNUSED.
 int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
 {
-    // Manually draw the top circle and draw extra line segments down to the bottom circle
+    // Create our angle to use while creating segments
     float angle = 0; // In radians
 
     // Draw each segment's face along the edge of the circles
