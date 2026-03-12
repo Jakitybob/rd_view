@@ -21,7 +21,7 @@ public:
     rd_pointh();
     rd_pointh(float x, float y, float z);
     rd_pointh(const float* point);
-    rd_pointh(class rd_point point);
+    rd_pointh(class rd_pointc point);
     rd_pointh(float x, float y, float z, float w);
 
     // Operator overloads

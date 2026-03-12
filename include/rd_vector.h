@@ -21,11 +21,13 @@ public:
     // Constructors
     rd_vector();
     rd_vector(float x, float y, float z);
+    rd_vector(class rd_pointc point);
 
     // Operator overloads
     rd_vector operator+ (rd_vector v); // Vector + vector
     rd_vector operator- (rd_vector v); // Vector - vector
     float operator^ (rd_vector v); // Vector ^ vector (dot product)
+    float operator^ (class rd_pointc); // Vector ^ cartesian point (dot product)
     rd_vector operator* (rd_vector v); // Vector * vector (cross product)
     rd_vector operator* (float scalar); // Vector * scalar
     rd_vector& operator=(const rd_vector& v); // Vector = vector
@@ -41,6 +43,9 @@ public:
     void SetX(float x) { this->x = x; }
     void SetY(float y) { this->y = y; }
     void SetZ(float z) { this->z = z; }
+
+    // Debug
+    void print_vector();
 };
 
 

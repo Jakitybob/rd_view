@@ -8,12 +8,12 @@ Purpose: This class implements a simple 3D point with a number
         RD View application.
 *********************************************************************/
 
-#include "rd_point.h"
+#include "rd_pointc.h"
 #include "rd_vector.h"
 #include "rd_pointh.h"
 
 /// @returns A point initialized to the origin (0, 0, 0).
-rd_point::rd_point()
+rd_pointc::rd_pointc()
 {
     this->x = 0;
     this->y = 0;
@@ -21,7 +21,7 @@ rd_point::rd_point()
 }
 
 /// @returns A point initialized to the provided XYZ values.
-rd_point::rd_point(float x, float y, float z)
+rd_pointc::rd_pointc(float x, float y, float z)
 {
     this->x = x;
     this->y = y;
@@ -29,7 +29,7 @@ rd_point::rd_point(float x, float y, float z)
 }
 
 /// @returns A point initialized to the XYZ values in the float array passed in.
-rd_point::rd_point(const float *point)
+rd_pointc::rd_pointc(const float *point)
 {
     this->x = point[0];
     this->y = point[1];
@@ -37,7 +37,7 @@ rd_point::rd_point(const float *point)
 }
 
 /// @returns A point converted from the provided homogenous point.
-rd_point::rd_point(class rd_pointh point)
+rd_pointc::rd_pointc(class rd_pointh point)
 {
     this->x = point.get_x() / point.get_w();
     this->y = point.get_y() / point.get_w();
@@ -45,19 +45,19 @@ rd_point::rd_point(class rd_pointh point)
 }
 
 /// @returns The vector found from subtracting our points together.
-rd_vector rd_point::operator-(rd_point point)
+rd_vector rd_pointc::operator-(rd_pointc point)
 {
     return rd_vector(point.x - x, point.y - y, point.z - z);
 }
 
 /// @returns The point scaled by the scalar.
-rd_point rd_point::operator*(float scalar)
+rd_pointc rd_pointc::operator*(float scalar)
 {
     return {x * scalar, y * scalar, z * scalar};
 }
 
 /// @returns A reference to this class with the updated values.
-rd_point& rd_point::operator=(rd_point point)
+rd_pointc& rd_pointc::operator=(rd_pointc point)
 {
     this->x = point.x;
     this->y = point.y;

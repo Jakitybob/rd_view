@@ -14,6 +14,8 @@ Purpose: This file implements some of the rd_direct rendering
 #include <cmath>
 #include "rd_vector.h"
 #include "rd_xform.h"
+#include "rd_pointc.h"
+#include "rd_pointh.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
 int REDirect::rd_display(const string &name, const string &type, const string &mode)
@@ -38,11 +40,9 @@ int REDirect::rd_world_begin()
     rd_xform xform;
     xform_stack.push(xform);
 
-    // TODO:
-    // * Clipping -> Device
-
     // Calculate our graphics pipeline matrices
     calculate_world_to_clip();
+    calculate_clip_to_device();
 
     // Initialize the frame and return OK
     rd_disp_init_frame(frameNumber);
@@ -124,6 +124,83 @@ int REDirect::rd_clipping(float znear, float zfar)
     return RD_OK;
 }
 
+int REDirect::rd_translate(const float offset[3])
+{
+    // Create the translation matrix with our provided translation values
+    rd_xform translation;
+    translation.set_translation(offset[0], offset[1], offset[2]);
+
+    // Multiply this translation matrix by our current transform and store it back into the global transform
+    current_transform = translation * current_transform;
+
+    return RD_OK;
+}
+
+int REDirect::rd_scale(const float scale_factor[3])
+{
+    // Create our scale matrix with our provided scalar values
+    rd_xform scale;
+    scale.set_scale(scale_factor[0], scale_factor[1], scale_factor[2]);
+
+    // Multiply this scaling matrix by our current transform and store it back into the global transform
+    current_transform = scale * current_transform;
+
+    return RD_OK;
+}
+
+int REDirect::rd_rotate_xy(float angle)
+{
+    // Create our XY rotation matrix with our angle
+    rd_xform rotation;
+    rotation.set_xy_rotation(angle);
+
+    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    current_transform = rotation * current_transform;
+
+    return RD_OK;
+}
+
+int REDirect::rd_rotate_yz(float angle)
+{
+    // Create our YZ rotation matrix with our angle
+    rd_xform rotation;
+    rotation.set_yz_rotation(angle);
+
+    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    current_transform = rotation * current_transform;
+
+    return RD_OK;
+}
+
+int REDirect::rd_rotate_zx(float angle)
+{
+    // Create our ZX rotation matrix with our angle
+    rd_xform rotation;
+    rotation.set_zx_rotation(angle);
+
+    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    current_transform = rotation * current_transform;
+
+    return RD_OK;
+}
+
+int REDirect::rd_xform_push()
+{
+    // Push the current transform onto our transform stack
+    xform_stack.push(current_transform);
+
+    return RD_OK;
+}
+
+int REDirect::rd_xform_pop()
+{
+    // Pop the transform from the top of the stack and set it as our current transform
+    current_transform = xform_stack.top();
+    xform_stack.pop();
+
+    return RD_OK;
+}
+
 /// Implements the midpoint circle algorithm to draw a circle with the desired
 /// radius using the provided coordinates as the midpoint for said circle.
 /// @param center A const float* to an array of 3 variables representing the X, Y, and Z
@@ -164,32 +241,28 @@ int REDirect::rd_circle(const float center[3], float radius)
 ///         of the ending point of the line.
 int REDirect::rd_line(const float start[3], const float end[3])
 {
-    // If our slope is between -1 and 1 plot a shallow line
-    if (abs(end[1] - start[1]) < abs(end[0] - start[0]))
-    {
-        if (start[0] > end[0]) // If the start is greater than the end, flip the start and end points
-            plot_shallow_line(end[0], end[1], start[0], start[1]);
-        else
-            plot_shallow_line(start[0], start[1], end[0], end[1]);
-    }
-    else // Otherwise create a steep line
-    {
-        if (start[1] > end[1]) // If the start is greater than the end, flip the start and end points
-            plot_steep_line(end[0], end[1], start[0], start[1]);
-        else
-            plot_steep_line(start[0], start[1], end[0], end[1]);
-    }
+    // Covert each point to a homogenous point
+    rd_pointh start_point(start[0], start[1], start[2]);
+    rd_pointh end_point(end[0], end[1], end[2]);
+
+    // Pass each point individually through the line pipeline, drawing at the endpoint
+    render_line(start_point, false);
+    render_line(end_point, true);
 
     return RD_OK;
 }
 
+// TODO: UPDATE DOCUMENTATION
 /// Draws a single pixel onto the screen at the desired x, y location.
 /// @param p A float* to an array of 3 values representing the x, y, and z coordinate of the point.
 ///         Note that the z value is currently ignored.
 int REDirect::rd_point(const float p[3])
 {
-    // Draw a single pixel at the desired location with the current draw color
-    rd_write_pixel(p[0], p[1], new float[3] {drawRed, drawGreen, drawBlue});
+    // Convert our point into a homogenous point
+    rd_pointh point(p[0], p[1], p[2]);
+
+    // Pass our point through the point pipeline to render it
+    render_point(point);
 
     return RD_OK;
 }
@@ -378,27 +451,28 @@ void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
 /// stores it our into our global world to clip matrix variable.
 void REDirect::calculate_world_to_clip()
 {
-    // Create our camera vectors using its position, look-at, and up vector.
-    rd_vector eye = rd_vector(camera_eye.get_x(), camera_eye.get_y(), camera_eye.get_z());
+    // Create our camera vectors to create the view matrix
+    rd_vector world_up(camera_up);
     rd_vector forward = (camera_at - camera_eye).normalized();
-    rd_vector right = (rd_vector(0, 1, 0) * forward).normalized(); // Use world up to calculate right
-    rd_vector up = forward * right;
+    rd_vector right = (world_up * forward).normalized();
+    rd_vector up = right * forward;
 
     // Create the view matrix using these vectors
     rd_xform view_matrix = {
-        right.GetX(), right.GetY(), right.GetZ(), -(right ^ eye),
-        up.GetX(), up.GetY(), up.GetZ(), -(up ^ eye),
-        forward.GetX(), forward.GetY(), forward.GetZ(), -(forward ^ eye),
-        0, 0, 0, 1
+        right.GetX(), up.GetX(), forward.GetX(), 0,
+        right.GetY(), up.GetY(), forward.GetY(), 0,
+        right.GetZ(), up.GetZ(), forward.GetZ(), 0,
+        -(right ^ camera_eye), -(up ^ camera_eye), -(forward ^ camera_eye), 1
     };
 
     // Create our perspective transform matrix
-    float fov_scale = 1/std::tanf((camera_fov/2) * (float)(std::numbers::pi/180)); // Our FOV scalar
+    float fov_scale = tanf(camera_fov / 2 * std::numbers::pi / 180);
+    float aspect_ratio = display_xSize / display_ySize;
     rd_xform perspective_matrix = {
-        fov_scale, 0, 0, 0,
-        0, fov_scale, 0, 0,
-        0, 0, -(far_clip/(far_clip - near_clip)), -1,
-        0, 0, -((far_clip * near_clip)/(far_clip - near_clip)), 0
+        1/(aspect_ratio * fov_scale), 0, 0, 0,
+        0, 1/fov_scale, 0, 0,
+        0, 0, (far_clip + near_clip)/(near_clip - far_clip), (2 * far_clip * near_clip)/(near_clip - far_clip),
+        0, 0, -1, 0
     };
 
     // Store our final world to clip matrix by finding the cross product perspective x view
@@ -412,8 +486,77 @@ void REDirect::calculate_clip_to_device()
     // Create our clip to device matrix and store it into our gobal variable
     clip_to_device = {
         (float)(display_xSize / 2), 0, 0, (float)(display_xSize / 2),
-        0, (float)(display_ySize / 2), 0, (float)(display_ySize / 2),
-        0, 0, 1, 0,
+        0, -(float)(display_ySize / 2), 0, (float)(display_ySize / 2),
+        0, 0, 0.5, 0.5,
         0, 0, 0, 1
     };
+}
+
+/// Runs the provided point through the point pipeline, converting it from
+/// world to clip coordinates, checking if it should be clipped or not, and then
+/// converting it from clip to device before drawing it to the screen.
+/// @param point The homogeneous point to render or clip.
+void REDirect::render_point(rd_pointh point)
+{
+    // Transform our point by the current transform
+    point = current_transform * point;
+
+    // Run our point through the world->clip pipeline
+    point = world_to_clip * point;
+
+    // Check if we should clip the point or render it
+    if (check_point_clip(point)) // We can exit here as we don't need to render this point
+        return;
+
+    // Perform the perspective divide on our point
+    float w = point.get_w();
+    point = rd_pointh(point.get_x() / w, point.get_y() / w, point.get_z() / w, point.get_w() / w);
+
+    // Run our point through the clip->device pipeline
+    point = clip_to_device * point;
+
+    // Convert our point back to cartesian coordinates and draw it
+    rd_pointc cartesian_point = rd_pointc(point);
+
+    // Write our pixel to the screen after having run it through the pipeline
+    rd_write_pixel((int)(cartesian_point.get_x()), (int)(cartesian_point.get_y()), new float[3] { drawRed, drawGreen, drawBlue });
+}
+
+bool REDirect::check_point_clip(class rd_pointh point)
+{
+    // Create a simple boundary coordinate array
+    float boundary_coordinates[6] = {
+        point.get_x() + point.get_w(), point.get_w() - point.get_x(),
+        point.get_y() + point.get_w(), point.get_w() - point.get_y(),
+        point.get_z() + point.get_w(), point.get_w() - point.get_z()
+    };
+
+    // Traverse the boundary coordinates and return true to clip the point if any coord is negative
+    for (int index = 0; index < 6; index++)
+        if (boundary_coordinates[index] < 0) return true;
+
+    // Return false, we should not clip this point, if we made it past the for loop
+    return false;
+}
+
+void REDirect::render_line(class rd_pointh point, bool should_draw)
+{
+    // Run our point through our current transformations
+    point = current_transform * point;
+
+    // Run our point through the world->clip transformation
+    point = world_to_clip * point;
+
+    // If the point should be drawn, render a line between this point and the last vertex
+    if (should_draw)
+    {
+        // Convert the last vertex and this vertex to device coordinates
+        rd_pointh last_vertex_device = clip_to_device * last_vertex;
+        rd_pointh current_vertex_device = clip_to_device * last_vertex;
+
+
+    }
+
+    // Update our last vertex variable either way
+    last_vertex = point;
 }

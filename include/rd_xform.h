@@ -3,7 +3,7 @@ CSCI 490J - Assignment 2 - Spring 2026
 Programmer: Jacob Yates
 Date Due: 03/16/2026
 
-Purpose: This class implements a 4x4 matrix used in RDView for transform
+Purpose: This class implements a row major 4x4 matrix used in RDView for transform
         matrices like translation, rotation, and scaling. It contains
         operations to multiply matrices together with one another and
         with homogenous points.

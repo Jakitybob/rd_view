@@ -11,22 +11,22 @@ Purpose: This class implements a simple 3D point with a number
 #ifndef RD_VIEW_RD_POINT_H
 #define RD_VIEW_RD_POINT_H
 
-class rd_point
+class rd_pointc
 {
 private:
     float x, y, z;
 
 public:
     // Constructors
-    rd_point();
-    rd_point(float x, float y, float z);
-    rd_point(const float* point); // Using float array
-    rd_point(class rd_pointh point); // Homogenous to cartesian
+    rd_pointc();
+    rd_pointc(float x, float y, float z);
+    rd_pointc(const float* point); // Using float array
+    rd_pointc(class rd_pointh point); // Homogenous to cartesian
 
     // Operator overloads
-    class rd_vector operator- (rd_point point);
-    rd_point operator* (float scalar);
-    rd_point& operator= (rd_point point);
+    class rd_vector operator- (rd_pointc point);
+    rd_pointc operator* (float scalar);
+    rd_pointc& operator= (rd_pointc point);
 
     // Getters / Setters
     float get_x() const { return x; }

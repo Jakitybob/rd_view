@@ -13,7 +13,8 @@ Purpose: This file contains static global variables for the program
 
 #include <stack>
 #include "rd_xform.h"
-#include "rd_point.h"
+#include "rd_pointc.h"
+#include "rd_pointh.h"
 
 // RGB draw color, default white
 static float drawRed = 1.0f;
@@ -31,15 +32,16 @@ static rd_xform world_to_clip;
 static rd_xform clip_to_device;
 
 // Camera information
-static rd_point camera_eye = rd_point(0, 0, 0);
-static rd_point camera_at = rd_point(0, 0, -1);
-static rd_point camera_up = rd_point(0, 1, 0);
+static rd_pointc camera_eye = rd_pointc(0, 0, 0);
+static rd_pointc camera_at = rd_pointc(0, 0, -1);
+static rd_pointc camera_up = rd_pointc(0, 1, 0);
 static float camera_fov = 90.f;
 static float near_clip = 1.0f;
 static float far_clip = 1.0e+09;
 
-// Global variable that holds the transformation stack
+// Transformation related variables
 static std::stack<rd_xform> xform_stack;
+static rd_pointh last_vertex; // The last vertex moved to in the line pipeline
 
 // Global variable for frame number
 static int frame_number;

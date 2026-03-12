@@ -41,6 +41,13 @@ private:
     void calculate_world_to_clip();
     void calculate_clip_to_device();
 
+    // Point pipeline
+    void render_point(class rd_pointh point);
+    bool check_point_clip(class rd_pointh point);
+
+    // Line pipeline
+    void render_line(class rd_pointh point, bool should_draw);
+
 public:
     int rd_display(const string &name, const string &type, const string &mode) override;
     int rd_format(int xresolution, int yresolution) override;
@@ -53,6 +60,13 @@ public:
     int rd_camera_up(const float up[3]) override;
     int rd_camera_fov(float fov) override;
     int rd_clipping(float znear, float zfar) override;
+    int rd_translate(const float offset[3]) override;
+    int rd_scale(const float scale_factor[3]) override;
+    int rd_rotate_xy(float angle) override;
+    int rd_rotate_yz(float angle) override;
+    int rd_rotate_zx(float angle) override;
+    int rd_xform_push(void) override;
+    int rd_xform_pop(void) override;
     int rd_circle(const float center[3], float radius) override;
     int rd_line(const float start[3], const float end[3]) override;
     int rd_point(const float p[3]) override;

@@ -11,6 +11,8 @@ Purpose: This class implements a mathematical vector as well as a
 
 #include "rd_vector.h"
 #include <cmath>
+#include <iostream>
+#include "rd_pointc.h"
 
 /// Default constructor that initializes all components to 0.
 rd_vector::rd_vector()
@@ -26,6 +28,14 @@ rd_vector::rd_vector(float x, float y, float z)
     this->x = x;
     this->y = y;
     this->z = z;
+}
+
+/// Constructor that creates a vector from the components of the point provided.
+rd_vector::rd_vector(rd_pointc point)
+{
+    this->x = point.get_x();
+    this->y = point.get_y();
+    this->z = point.get_z();
 }
 
 /// @param v The vector being added to this one.
@@ -47,6 +57,13 @@ rd_vector rd_vector::operator- (rd_vector v)
 float rd_vector::operator^ (rd_vector v)
 {
     return ((x * v.x) + (y * v.y) + (z * v.z));
+}
+
+/// @param point The cartesian point to dot together with this one.
+/// @returns The dot product scalar of the vector and the point.
+float rd_vector::operator^(class rd_pointc point)
+{
+    return (x * point.get_x() + y * point.get_y() + z * point.get_z());
 }
 
 /// @param v The vector to cross with this one.
@@ -89,4 +106,10 @@ rd_vector rd_vector::normalized()
 {
     float magnitude = this->magnitude();
     return rd_vector(x / magnitude, y / magnitude, z / magnitude);
+}
+
+/// Prints the contents of the vector to standard output for debugging purposes.
+void rd_vector::print_vector()
+{
+    std::cout << "X: " << x << " Y: " << y << " Z: " << z << std::endl;
 }

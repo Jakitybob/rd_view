@@ -10,7 +10,7 @@ Purpose: This class implements a simple 3D homogenous point with a number
 
 #include "rd_pointh.h"
 #include <stdexcept>
-#include "rd_point.h"
+#include "rd_pointc.h"
 
 /// @returns A homogenous point initialized to the origin.
 rd_pointh::rd_pointh()
@@ -37,7 +37,7 @@ rd_pointh::rd_pointh(const float *point)
     this->w = 1;
 }
 
-rd_pointh::rd_pointh(rd_point point)
+rd_pointh::rd_pointh(rd_pointc point)
 {
     this->x = point.get_x();
     this->y = point.get_y();

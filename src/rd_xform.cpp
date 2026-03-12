@@ -3,7 +3,7 @@ CSCI 490J - Assignment 2 - Spring 2026
 Programmer: Jacob Yates
 Date Due: 03/16/2026
 
-Purpose: This class implements a 4x4 matrix used in RDView for transform
+Purpose: This class implements a row major 4x4 matrix used in RDView for transform
         matrices like translation, rotation, and scaling. It contains
         operations to multiply matrices together with one another and
         with homogenous points.
@@ -80,6 +80,9 @@ rd_pointh rd_xform::operator*(rd_pointh point)
         // Set the value in our return point
         return_point[rows] = sum;
     }
+
+    // Return our new point
+    return return_point;
 }
 
 /// @param m2 The matrix whose data is being copied into this one.
@@ -133,6 +136,9 @@ void rd_xform::set_xy_rotation(float angle)
     // Reset the matrix
     set_identity();
 
+    // Convert from degrees to radians
+    angle = angle * (std::numbers::pi / 180.0f);
+
     // Set up the matrix for rotation about Z
     matrix[0][0] = cosf(angle); // row 1 col 1
     matrix[0][1] = -sinf(angle); // row 1 col 2
@@ -147,6 +153,9 @@ void rd_xform::set_yz_rotation(float angle)
     // Reset the matrix
     set_identity();
 
+    // Convert from degrees to radians
+    angle = angle * (std::numbers::pi / 180.0f);
+
     // Set up the matrix for rotation about X
     matrix[1][1] = cosf(angle);
     matrix[1][2] = -sinf(angle);
@@ -160,6 +169,9 @@ void rd_xform::set_zx_rotation(float angle)
 {
     // Reset the matrix
     set_identity();
+
+    // Convert from degrees to radians
+    angle = angle * (std::numbers::pi / 180.0f);
 
     // Set up the matrix for rotation about Y
     matrix[0][0] = cosf(angle);
