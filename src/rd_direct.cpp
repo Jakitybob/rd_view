@@ -293,8 +293,23 @@ int REDirect::rd_point(const float p[3])
     return RD_OK;
 }
 
+/// Creates points from the provided array and passes them into the point pipeline
+/// for rendering to the screen.
+/// @param vertex_type UNUSED.
+/// @param nvertex The number of vertices in the array.
+/// @param vertex A reference to an array of floats with the XYZ values to draw.
 int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<float> &vertex)
 {
+    // Loop through each vertex, extracting the 3 floats from the array in the process
+    for (int index = 0; index < nvertex; index++)
+    {
+        // Create our point from the next three values in the vector
+        rd_pointh point(vertex[0 + index * 3], vertex[1 + index * 3],  vertex[2 + index * 3]);
+
+        // Pass the point into the point pipeline for rendering
+        render_point(point);
+    }
+
     return RD_OK;
 }
 
@@ -303,7 +318,8 @@ int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<fl
     return RD_OK;
 }
 
-///
+/// Draws a cone with the base centered on the XY plane and the
+/// tip being height away from the origin at (0, 0, height).
 /// @param height The height of the cone.
 /// @param radius The radius of the base of the cone.
 /// @param thetamax UNUSED.
