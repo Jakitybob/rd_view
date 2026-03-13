@@ -137,13 +137,13 @@ void rd_xform::set_xy_rotation(float angle)
     set_identity();
 
     // Convert from degrees to radians
-    angle = angle * (std::numbers::pi / 180.0f);
+    float radians = angle * (M_PI/180);
 
     // Set up the matrix for rotation about Z
-    matrix[0][0] = cosf(angle); // row 1 col 1
-    matrix[0][1] = -sinf(angle); // row 1 col 2
-    matrix[1][0] = sinf(angle); // row 2 col 1
-    matrix[1][1] = cosf(angle); // row 2 col 2
+    matrix[0][0] = cosf(radians); // row 1 col 1
+    matrix[0][1] = -sinf(radians); // row 1 col 2
+    matrix[1][0] = sinf(radians); // row 2 col 1
+    matrix[1][1] = cosf(radians); // row 2 col 2
 }
 
 /// Sets the matrix to be a rotation matrix about the X-axis (Y towards Z).
@@ -154,13 +154,13 @@ void rd_xform::set_yz_rotation(float angle)
     set_identity();
 
     // Convert from degrees to radians
-    angle = angle * (std::numbers::pi / 180.0f);
+    float radians = angle * (M_PI/180);
 
     // Set up the matrix for rotation about X
-    matrix[1][1] = cosf(angle);
-    matrix[1][2] = -sinf(angle);
-    matrix[2][1] = sinf(angle);
-    matrix[2][2] = cosf(angle);
+    matrix[1][1] = cosf(radians);
+    matrix[1][2] = -sinf(radians);
+    matrix[2][1] = sinf(radians);
+    matrix[2][2] = cosf(radians);
 }
 
 /// Sets the matrix to be a rotation matrix about the Y-axis (Z towards X).
@@ -171,13 +171,13 @@ void rd_xform::set_zx_rotation(float angle)
     set_identity();
 
     // Convert from degrees to radians
-    angle = angle * (std::numbers::pi / 180.0f);
+    float radians = angle * (M_PI/180);
 
     // Set up the matrix for rotation about Y
-    matrix[0][0] = cosf(angle);
-    matrix[0][2] = sinf(angle);
-    matrix[2][0] = -sinf(angle);
-    matrix[2][2] = cosf(angle);
+    matrix[0][0] = cosf(radians);
+    matrix[0][2] = sinf(radians);
+    matrix[2][0] = -sinf(radians);
+    matrix[2][2] = cosf(radians);
 }
 
 /// Sets the matrix back to the standard identity matrix.

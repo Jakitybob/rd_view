@@ -45,7 +45,7 @@ static rd_pointh last_vertex; // The last vertex moved to in the line pipeline, 
 static int NUM_SEGMENTS = 20; // The number of segments to use for round objects, default 20
 
 // Global variable for frame number
-static int frame_number;
+static int frame_number = 0;
 
 // Global variable for the array that holds the PNM image data
 inline float*** image_array;

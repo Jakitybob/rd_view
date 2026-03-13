@@ -32,6 +32,9 @@ int REDirect::rd_format(int xresolution, int yresolution)
 /// Initializes the display for a new frame.
 int REDirect::rd_world_begin()
 {
+    // Reset the current transform global variable to an identity matrix
+    current_transform = rd_xform();
+
     // Make sure our transform stack is empty, and empty it if not
     while (!xform_stack.empty()) // It should always be empty but better safe than sorry
         xform_stack.pop();
@@ -45,7 +48,7 @@ int REDirect::rd_world_begin()
     calculate_clip_to_device();
 
     // Initialize the frame and return OK
-    rd_disp_init_frame(frameNumber);
+    rd_disp_init_frame(frame_number);
     return RD_OK;
 }
 
@@ -60,7 +63,7 @@ int REDirect::rd_world_end()
 int REDirect::rd_frame_begin(int frame_no)
 {
     // Store the frame number globally for use elsewhere
-    frameNumber = frame_no;
+    frame_number = frame_no;
 
     return RD_OK;
 }
@@ -313,8 +316,49 @@ int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<f
     return RD_OK;
 }
 
+///
+/// @param vertex_type UNUSED.
+/// @param nvertex The number of vertices in the array.
+/// @param vertex A reference to an array of floats that contain all vertex information.
+/// @param nface The number of faces
+/// @param face
 int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<float> &vertex, int nface, const vector<int> &face)
 {
+    // Store out the first vertex of a plane to return back to
+    rd_pointh* first_vertex = nullptr;
+
+    // Loop through each face to draw each line in the connected set.
+    for (int index = 0; index < face.size(); index++)
+    {
+        // Store the vertex we should draw from the face array
+        int vertex_num = face[index];
+
+        //std::cout << "Vertex num: " << vertex_num << std::endl;
+
+        // If the vertex number is -1, draw the final line then reset first_vertex
+        if (vertex_num == -1)
+        {
+            render_line(*first_vertex, true);
+            delete first_vertex; // Free up the last point made
+            first_vertex = nullptr;
+            continue;
+        }
+
+        // Create a point at our vertex
+        rd_pointh* point = new rd_pointh(vertex[0 + vertex_num * 3], vertex[1 + vertex_num * 3],  vertex[2 + vertex_num * 3]);
+
+        // If first_vertex is nullptr, set it to this vertex and move there without drawing
+        if (first_vertex == nullptr)
+        {
+            first_vertex = point;
+            render_line(*point, false);
+        }
+        else
+            render_line(*point, true);
+    }
+
+    // Free up memory and return
+    delete first_vertex;
     return RD_OK;
 }
 
@@ -402,9 +446,14 @@ int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
     return RD_OK;
 }
 
-///
+/// Renders a flat disk parallel to the XY axis and centered on the Z-axis, with the provided radius
+/// and at the height in Z as specified.
+/// @param height The z value to render the disk at.
+/// @param The radius of the disk.
+/// @param theta UNUSED.
 int REDirect::rd_disk(float height, float radius, float theta)
 {
+    render_circle(radius, height);
     return RD_OK;
 }
 
@@ -556,7 +605,7 @@ void REDirect::calculate_world_to_clip()
     };
 
     // Create our perspective transform matrix
-    float fov_scale = tanf((camera_fov / 2) * (std::numbers::pi / 180));
+    float fov_scale = tanf((camera_fov / 2) * (M_PI/180));
     float aspect_ratio = display_xSize / display_ySize;
     rd_xform perspective_matrix = {
         1/(aspect_ratio * fov_scale), 0, 0, 0,

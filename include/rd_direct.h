@@ -29,8 +29,6 @@ using std::string;
 class REDirect: public RenderEngine
 {
 private:
-    int frameNumber = 0; // Current frame
-
     // 2D Rendering functions (basically deprecated)
     void plot_circle(int x, int y, int xCenter, int yCenter);
     void flood_fill(const float seed_point[3], float seed_color[3]);
