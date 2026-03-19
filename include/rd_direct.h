@@ -34,6 +34,7 @@ private:
     void flood_fill(const float seed_point[3], float seed_color[3]);
 
     // Graphics Pipeline functions
+    void plot_pixel(class rd_pointc point);
     void calculate_world_to_clip();
     void calculate_clip_to_device();
     void render_point(class rd_pointh point);
@@ -50,6 +51,7 @@ public:
     int rd_world_end() override;
     int rd_frame_begin(int frame_no) override;
     int rd_frame_end() override;
+    int rd_render_cleanup(void) override;
     int rd_camera_eye(const float eyepoint[3]) override;
     int rd_camera_at(const float atpoint[3]) override;
     int rd_camera_up(const float up[3]) override;

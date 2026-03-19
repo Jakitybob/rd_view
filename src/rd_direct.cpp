@@ -75,6 +75,14 @@ int REDirect::rd_frame_end()
     return RD_OK;
 }
 
+/// Cleans up allocated memory at the end of program runtime.
+int REDirect::rd_render_cleanup()
+{
+    // Free the depth buffer memory here
+
+    return RD_OK;
+}
+
 /// Store the camera's position into our global variables.
 /// @param eyepoint An array of 3 floats that represent the XYZ of the camera position.
 int REDirect::rd_camera_eye(const float eyepoint[3])
@@ -584,6 +592,15 @@ void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
     flood_fill(new float[3] {seed_point[0] - 1, seed_point[1], seed_point[2]}, seed_color);
     flood_fill(new float[3] {seed_point[0], seed_point[1] + 1, seed_point[2]}, seed_color);
     flood_fill(new float[3] {seed_point[0], seed_point[1] - 1, seed_point[2]}, seed_color);
+}
+
+/// This function checks the z-buffer to see if the provided point
+/// should be drawn or not and draws it and updates the z-buffer if
+/// it should in fact be drawn.
+/// @param point The cartesian point to draw.
+void REDirect::plot_pixel(rd_pointc point)
+{
+    // TODO: Implement
 }
 
 /// A function that calculates the world to clip transformation matrix and
