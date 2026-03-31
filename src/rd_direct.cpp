@@ -465,31 +465,47 @@ int REDirect::rd_disk(float height, float radius, float theta)
     return RD_OK;
 }
 
-/// Draws three circles in 3D space, with one on the XY plane, one on the
-/// YZ plane, and a third on the ZX plane. A simple representation of a sphere
-/// that will be redone shortly for assignment 3.
-/// @param radius The radius of the sphere.
+/// Draws a sphere using a latitudinal / longitudinal representation
+/// of the sphere where it gets broken up into polygons all along
+/// the sphere.
+/// @radius The radius of the sphere to draw.
 /// @param zmin UNUSED.
 /// @param zmax UNUSED.
 /// @param thetamax UNUSED.
 int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
 {
-    // Store our current transform on the stack
-    rd_xform_push();
+    // Number of latitudinal and longitudinal slices to draw
+    int numLatitude = 10;
+    int numLongitude = 12;
 
-    // Render a circle on the XY plane
-    render_circle(radius, 0);
+    // Loop through the latitudinal slices
+    for (int latitude = 0; latitude < numLatitude; latitude++)
+    {
+        // Create two theta variables
+        float theta = -M_PI / 2 + latitude * (M_PI / numLatitude);
+        float thetaNext = -M_PI / 2 + (latitude + 1) * (M_PI / numLatitude); // The theta for the next step
 
-    // Rotate so that the circle draws about the YZ plane
-    rd_rotate_yz(90);
-    render_circle(radius, 0);
+        // Loop through our longitudinal slices
+        for (int longitude = 0; longitude < numLongitude; longitude++)
+        {
+            // Create the two phi variables
+            float phi = longitude * (2 * M_PI / numLongitude);
+            float phiNext = (longitude + 1) * (2 * M_PI / numLongitude);
 
-    // Rotate so that the circle draws about the ZX plane
-    rd_rotate_zx(90);
-    render_circle(radius, 0);
+            // Create the four points
+            rd_pointc bottomLeft(radius * cosf(theta) * cosf(phi), radius * cosf(theta) * sinf(phi), radius * sinf(theta));
+            rd_pointc topLeft(radius * cosf(thetaNext) * cosf(phi), radius * cosf(thetaNext) * sinf(phi), radius * sinf(thetaNext));
+            rd_pointc bottomRight(radius * cosf(theta) * cosf(phiNext), radius * cosf(theta) * sinf(phiNext), radius * sinf(theta));
+            rd_pointc topRight(radius * cosf(thetaNext) * cosf(phiNext), radius * cosf(thetaNext) * sinf(phiNext), radius * sinf(thetaNext));
 
-    // Pop the stack so the transform returns to its prior state
-    rd_xform_pop();
+            // Pass the four points in the line drawing routine to create a polygon
+            render_line(bottomLeft, false);
+            render_line(bottomRight, true);
+            render_line(topRight, true);
+            render_line(topLeft, true);
+            render_line(bottomLeft, true);
+        }
+    }
 
     return RD_OK;
 }
