@@ -11,6 +11,7 @@ Purpose: This file implements some of the rd_direct rendering
 
 #include "rd_direct.h"
 
+#include <bitset>
 #include <cmath>
 #include "rd_vector.h"
 #include "rd_xform.h"
@@ -657,7 +658,7 @@ void REDirect::calculate_clip_to_device()
 {
     // Create our clip to device matrix and store it into our gobal variable
     clip_to_device = {
-        (float)(display_ySize / 2), 0, 0, (float)(display_xSize / 2),
+        (float)(display_xSize / 2), 0, 0, (float)(display_xSize / 2),
         0, (float)(display_ySize / 2), 0, (float)(display_ySize / 2),
         0, 0, 0.5, 0.5,
         0, 0, 0, 1
@@ -728,44 +729,131 @@ void REDirect::render_line(rd_pointh point, bool should_draw)
     // Run our point through the world->clip transformation
     point = world_to_clip * point;
 
-    // If the point should be drawn, render a line between this point and the last vertex
-    if (should_draw)
+    //if (should_draw) plot_line(point, true);
+    //last_vertex = point;
+
+    // TODO: Implement line clipping here
+    clip_line(point, should_draw);
+}
+
+void REDirect::clip_line(class rd_pointh point, bool should_draw)
+{
+    // Static variables to hold onto the last boundary coords and kode
+    static float lastBoundaryCoords[6];
+    static int lastKode;
+
+    // Create our boundary coordinate from the homogenous point
+    float boundaryCoords[6] = {
+        point.get_x() + point.get_w(), point.get_w() - point.get_x(),
+        point.get_y() + point.get_w(), point.get_w() - point.get_y(),
+        point.get_z() + point.get_w(), point.get_w() - point.get_z()
+    };
+
+    // Create the kode and mask
+    int kode = 0, mask = 1;
+
+    // Step through the boundary coordinates to create the kode
+    for (int index = 0; index < 6; index++)
     {
-        // Convert the last vertex and this vertex to device coordinates
-        rd_pointc start_vertex = rd_pointc(clip_to_device * last_vertex);
-        rd_pointc end_vertex = rd_pointc(clip_to_device * point);
+        // Update the bit in our kode if the coordinate is negative
+        if (boundaryCoords[index] < -1e-5f)
+            kode |= mask;
 
-        // Calculate dX and dY, the difference in endpoints
-        int dX = abs((int)start_vertex.get_x() - (int)end_vertex.get_x());
-        int dY = abs((int)start_vertex.get_y() - (int)end_vertex.get_y());
+        // Shift the mask by one bit left
+        mask <<= 1;
+    }
 
-        // Store our number of steps based on the max between dX and dY
-        const int NSTEPS = std::max(dX, dY);
+    // If we should draw, check for a trivial reject and trivial accept
+    if (should_draw && (lastKode & kode) == 0) // If this fails it's a trivial reject on this line
+    {
+        // Trivial accept, we can simply draw from here
+        if ((lastKode | kode) == 0)
+            plot_line(point, true);
 
-        // Set our initial variables based on the start vertex
-        float x = start_vertex.get_x();
-        float y = start_vertex.get_y();
-        float z = start_vertex.get_z();
-
-        // Set our d variables
-        float dx = (end_vertex.get_x() - x) / NSTEPS;
-        float dy = (end_vertex.get_y() - y) / NSTEPS;
-        float dz = (end_vertex.get_z() - z) / NSTEPS;
-
-        // Draw our line
-        for (int index = 0; index < NSTEPS; index++)
+        // Otherwise we calculate clipping
+        else
         {
-            x = start_vertex.get_x() + index * dx;
-            y = start_vertex.get_y() + index * dy;
-            z = start_vertex.get_z() + index * dz;
+            // Create our "super" kode to use
+            int superKode = lastKode | kode;
 
-            // Plot our pixel on the screen at the x and y
-            rd_write_pixel((int)x, int(y), new float[3] { drawRed, drawGreen, drawBlue });
+            // Create our alphaMin and alphaMax
+            float alphaMin = 0, alphaMax = 1;
+
+            // Step through each bit in the kode to see if we should calculate an alpha
+            int mask = 1; // Use a mask to check the kodes
+            for (int index = 0; index < 6; index++)
+            {
+                // If the superKode is 0 at this bit, shift the mask and move on
+                if ((superKode & mask) == 0)
+                {
+                    mask <<= 1;
+                    continue;
+                }
+
+                // Otherwise calculate the alpha at this index
+                float alpha = lastBoundaryCoords[index] / (lastBoundaryCoords[index] - boundaryCoords[index]);
+
+                // If lastKode at this bit is 1, we are moving inside to out so adjust our mn
+                if ((lastKode & mask) != 0)
+                    alphaMin = std::max(alphaMin, alpha);
+                else // Otherwise we are moving outside to in so adjust our max
+                    alphaMax = std::min(alphaMax, alpha);
+
+                // Shift the mask
+                mask <<= 1;
+            }
+
+            // Using our alphas, create our updated points
+            rd_pointh p0 = last_vertex + ((point - last_vertex) * alphaMin);
+            point = last_vertex + ((point - last_vertex) * alphaMax);
+            last_vertex = p0; // Update last_vertex for drawing now that our calculations are done
+
+            // Draw with our clipped lines
+            if (!(alphaMin > alphaMax)) // Make sure our line didn't clip out of existence
+                plot_line(point, true);
         }
     }
 
-    // Update our last vertex variable either way
+    // Update our global static variables
     last_vertex = point;
+    lastKode = kode;
+    for (int index = 0; index < 6; index++)
+        lastBoundaryCoords[index] = boundaryCoords[index];
+}
+
+void REDirect::plot_line(class rd_pointh point, bool should_draw)
+{
+    // Convert the last vertex and this vertex to device coordinates
+    rd_pointc start_vertex = rd_pointc(clip_to_device * last_vertex);
+    rd_pointc end_vertex = rd_pointc(clip_to_device * point);
+
+    // Calculate dX and dY, the difference in endpoints
+    int dX = abs((int)start_vertex.get_x() - (int)end_vertex.get_x());
+    int dY = abs((int)start_vertex.get_y() - (int)end_vertex.get_y());
+
+    // Store our number of steps based on the max between dX and dY
+    const int NSTEPS = std::max(dX, dY);
+
+    // Set our initial variables based on the start vertex
+    float x = start_vertex.get_x();
+    float y = start_vertex.get_y();
+    float z = start_vertex.get_z();
+
+    // Set our d variables
+    float dx = (end_vertex.get_x() - x) / NSTEPS;
+    float dy = (end_vertex.get_y() - y) / NSTEPS;
+    float dz = (end_vertex.get_z() - z) / NSTEPS;
+
+    // Draw our line
+    for (int index = 0; index < NSTEPS; index++)
+    {
+        x = start_vertex.get_x() + index * dx;
+        y = start_vertex.get_y() + index * dy;
+        z = start_vertex.get_z() + index * dz;
+
+        // Plot our pixel on the screen at the x and y
+        rd_write_pixel((int)x, int(y), new float[3] { drawRed, drawGreen, drawBlue });
+    }
 }
 
 /// Renders a simple circle in 3D space, using the line rendering pipeline to
