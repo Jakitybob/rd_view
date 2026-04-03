@@ -31,7 +31,9 @@ int REDirect::rd_format(int xresolution, int yresolution)
     return RD_OK;
 }
 
-/// Initializes the display for a new frame.
+/// Initializes the display for a new frame. This includes calculating
+/// our world->clip and clip->device transform matrices as well as
+/// initializing our depth buffer.
 int REDirect::rd_world_begin()
 {
     // Reset the current transform global variable to an identity matrix
@@ -48,6 +50,19 @@ int REDirect::rd_world_begin()
     // Calculate our graphics pipeline matrices
     calculate_world_to_clip();
     calculate_clip_to_device();
+
+    // Initialize the depth buffer to the screen size
+    if (depth_buffer == nullptr)
+    {
+        depth_buffer = new float*[display_ySize];
+        for (int index = 0; index < display_ySize; index++)
+            depth_buffer[index] = new float[display_xSize];
+    }
+
+    // Clear out the depth buffer by initializing all values to zero
+    for (int index = 0; index < display_ySize; index++)
+        for (int sub_index = 0; sub_index < display_xSize; sub_index++)
+            depth_buffer[index][sub_index] = 1;
 
     // Initialize the frame and return OK
     rd_disp_init_frame(frame_number);
@@ -80,7 +95,12 @@ int REDirect::rd_frame_end()
 /// Cleans up allocated memory at the end of program runtime.
 int REDirect::rd_render_cleanup()
 {
-    // Free the depth buffer memory here
+    // Free each column of the depth buffer's memory
+    for (int index = 0; index < display_ySize; index++)
+        delete[] depth_buffer[index];
+
+    // Free the memory for the rows of the depth buffer
+    delete[] depth_buffer;
 
     return RD_OK;
 }
@@ -618,7 +638,20 @@ void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
 /// @param point The cartesian point to draw.
 void REDirect::plot_pixel(rd_pointc point)
 {
-    // TODO: Implement
+    // Store out our x and y from the point
+    int x = (int)point.get_x();
+    int y = (int)point.get_y();
+
+    // If the x or the y are on the very edge, subtract one
+    if (x == display_xSize) x -= 1;
+    if (y == display_ySize) y -= 1;
+
+    // Check if the z-value of the point is larger than the point in the buffer
+    if (point.get_z() < depth_buffer[y][x])
+    {
+        rd_write_pixel((int)point.get_x(), (int)point.get_y(), new float[3] {drawRed, drawGreen, drawBlue});
+        depth_buffer[y][x] = point.get_z();
+    }
 }
 
 /// A function that calculates the world to clip transformation matrix and
@@ -689,11 +722,8 @@ void REDirect::render_point(rd_pointh point)
     // Run our point through the clip->device pipeline
     point = clip_to_device * point;
 
-    // Convert our point back to cartesian coordinates and draw it
-    rd_pointc cartesian_point = rd_pointc(point);
-
     // Write our pixel to the screen after having run it through the pipeline
-    rd_write_pixel((int)(cartesian_point.get_x()), (int)(cartesian_point.get_y()), new float[3] { drawRed, drawGreen, drawBlue });
+    plot_pixel(rd_pointc(point));
 }
 
 /// Creates boundary coordinates from Brinn's clipping algorithm and if any of the
@@ -831,7 +861,12 @@ void REDirect::clip_line(rd_pointh point, bool should_draw)
         lastBoundaryCoords[index] = boundaryCoords[index];
 }
 
-/// Uses the DDA line drawing algorithm
+/// Uses the DDA line drawing algorithm to draw a line on the screen from
+/// last_vertex (our starting point) to the passed in point (our ending point).
+/// This function also calculates the change in z for use with depth buffering.
+/// Each calculated point is passed to plot_pixel for it to be drawn on the
+/// screen with proper buffering.
+/// @param point The homogenous point to convert to device coordinates and draw towards.
 void REDirect::plot_line(rd_pointh point)
 {
     // Convert the last vertex and this vertex to device coordinates
@@ -863,8 +898,11 @@ void REDirect::plot_line(rd_pointh point)
         y = start_vertex.get_y() + index * dy;
         z = start_vertex.get_z() + index * dz;
 
+        // Create our new point from these values
+        rd_pointc new_point = rd_pointc(x, y, z);
+
         // Plot our pixel on the screen at the x and y
-        rd_write_pixel((int)x, int(y), new float[3] { drawRed, drawGreen, drawBlue });
+        plot_pixel(new_point);
     }
 }
 
