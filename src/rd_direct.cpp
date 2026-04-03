@@ -11,6 +11,7 @@ Purpose: This file implements some of the rd_direct rendering
 
 #include "rd_direct.h"
 
+#include <algorithm>
 #include <bitset>
 #include <cmath>
 #include "rd_vector.h"
@@ -640,7 +641,7 @@ void REDirect::calculate_world_to_clip()
 
     // Create our perspective transform matrix
     float fov_scale = tanf((camera_fov / 2) * (M_PI/180));
-    float aspect_ratio = display_xSize / display_ySize;
+    float aspect_ratio = (float)display_xSize / (float)display_ySize;
     rd_xform perspective_matrix = {
         1/(aspect_ratio * fov_scale), 0, 0, 0,
         0, 1/fov_scale, 0, 0,
@@ -656,10 +657,10 @@ void REDirect::calculate_world_to_clip()
 /// and stores it directly into our global matrix variable
 void REDirect::calculate_clip_to_device()
 {
-    // Create our clip to device matrix and store it into our gobal variable
+    // Create our clip to device matrix and store it into our global variable
     clip_to_device = {
-        (float)(display_xSize / 2), 0, 0, (float)(display_xSize / 2),
-        0, (float)(display_ySize / 2), 0, (float)(display_ySize / 2),
+        ((float)display_xSize / 2), 0, 0, ((float)display_xSize / 2),
+        0, ((float)display_ySize / 2), 0, ((float)display_ySize / 2),
         0, 0, 0.5, 0.5,
         0, 0, 0, 1
     };
@@ -699,7 +700,7 @@ void REDirect::render_point(rd_pointh point)
 /// boundary coordinates are negative, returns true to clip the point.
 /// @param point A homogeneous point to check whether it is in bounds.
 /// @returns True if the point should be clipped and false if not.
-bool REDirect::check_point_clip(class rd_pointh point)
+bool REDirect::check_point_clip(rd_pointh point)
 {
     // Create a simple boundary coordinate array
     float boundary_coordinates[6] = {
@@ -716,10 +717,10 @@ bool REDirect::check_point_clip(class rd_pointh point)
     return false;
 }
 
-/// Runs the specified point through world->device transformation pipeline
-/// and, if the flag is on, draws a line using the DDA algorithm from the
-/// last vertex passed in to the current vertex.
-/// @param point The homogeneous point to plot as a vertex.
+/// Runs the provided point through the current transform, then
+/// through our world to clip transform matrix, then passes the
+/// new point and our draw flag to the clip_line function.
+/// @param point The homogeneous point we want to plot on a line.
 /// @param should_draw Whether a line should be drawn between this vertex and the last.
 void REDirect::render_line(rd_pointh point, bool should_draw)
 {
@@ -729,14 +730,20 @@ void REDirect::render_line(rd_pointh point, bool should_draw)
     // Run our point through the world->clip transformation
     point = world_to_clip * point;
 
-    //if (should_draw) plot_line(point, true);
-    //last_vertex = point;
-
-    // TODO: Implement line clipping here
+    // Send the point to the line clipping routine next
     clip_line(point, should_draw);
 }
 
-void REDirect::clip_line(class rd_pointh point, bool should_draw)
+/// Using Blinn's clipping algorithm, uses boundary coordinates
+/// and kodes to detect lines rendering outside of screen space and
+/// for lines that are not fully outside of clipping planes, calculates
+/// new starting and ending points to draw the line with that are within
+/// the clipping planes of the current scene.
+/// @param point The homogenous point to perform clipping on. This point
+///             should be in clipping space.
+/// @param should_draw Whether a line should be drawn between this vertex and the last,
+///             or if the last_vertex should just be updated / moved to this point.
+void REDirect::clip_line(rd_pointh point, bool should_draw)
 {
     // Static variables to hold onto the last boundary coords and kode
     static float lastBoundaryCoords[6];
@@ -768,7 +775,7 @@ void REDirect::clip_line(class rd_pointh point, bool should_draw)
     {
         // Trivial accept, we can simply draw from here
         if ((lastKode | kode) == 0)
-            plot_line(point, true);
+            plot_line(point);
 
         // Otherwise we calculate clipping
         else
@@ -790,10 +797,10 @@ void REDirect::clip_line(class rd_pointh point, bool should_draw)
                     continue;
                 }
 
-                // Otherwise calculate the alpha at this index
+                // Find the alpha for our current position
                 float alpha = lastBoundaryCoords[index] / (lastBoundaryCoords[index] - boundaryCoords[index]);
 
-                // If lastKode at this bit is 1, we are moving inside to out so adjust our mn
+                // If lastKode at this bit is 1, we are moving inside to out so adjust our min
                 if ((lastKode & mask) != 0)
                     alphaMin = std::max(alphaMin, alpha);
                 else // Otherwise we are moving outside to in so adjust our max
@@ -803,14 +810,17 @@ void REDirect::clip_line(class rd_pointh point, bool should_draw)
                 mask <<= 1;
             }
 
-            // Using our alphas, create our updated points
-            rd_pointh p0 = last_vertex + ((point - last_vertex) * alphaMin);
-            point = last_vertex + ((point - last_vertex) * alphaMax);
-            last_vertex = p0; // Update last_vertex for drawing now that our calculations are done
+            // Only proceed with drawing if we did not clip the line out of existence
+            if (!(alphaMin >= alphaMax))
+            {
+                // Using our alphas, create our updated points
+                rd_pointh start_point = last_vertex + ((point - last_vertex) * alphaMin);
+                rd_pointh end_point = last_vertex + ((point - last_vertex) * alphaMax);
+                last_vertex = start_point; // Update last_vertex for drawing now that our calculations are done
 
-            // Draw with our clipped lines
-            if (!(alphaMin > alphaMax)) // Make sure our line didn't clip out of existence
-                plot_line(point, true);
+                // Draw with our clipped lines
+                plot_line(end_point);
+            }
         }
     }
 
@@ -821,7 +831,8 @@ void REDirect::clip_line(class rd_pointh point, bool should_draw)
         lastBoundaryCoords[index] = boundaryCoords[index];
 }
 
-void REDirect::plot_line(class rd_pointh point, bool should_draw)
+/// Uses the DDA line drawing algorithm
+void REDirect::plot_line(rd_pointh point)
 {
     // Convert the last vertex and this vertex to device coordinates
     rd_pointc start_vertex = rd_pointc(clip_to_device * last_vertex);
@@ -833,6 +844,7 @@ void REDirect::plot_line(class rd_pointh point, bool should_draw)
 
     // Store our number of steps based on the max between dX and dY
     const int NSTEPS = std::max(dX, dY);
+    if (NSTEPS <= 0) return; // We can skip the next calculations if we don't have any steps to take
 
     // Set our initial variables based on the start vertex
     float x = start_vertex.get_x();

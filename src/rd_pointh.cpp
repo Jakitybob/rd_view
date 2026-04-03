@@ -63,6 +63,11 @@ rd_pointh rd_pointh::operator-(rd_pointh point)
     return rd_pointh(x - point.x, y - point.y, z - point.z, w - point.w);
 }
 
+rd_pointh rd_pointh::operator/(float divisor)
+{
+    return rd_pointh(x / divisor, y / divisor, z / divisor, w / divisor);
+}
+
 rd_pointh rd_pointh::operator*(float scalar)
 {
     return rd_pointh(x * scalar, y * scalar, z * scalar, w * scalar);

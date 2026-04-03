@@ -28,6 +28,7 @@ public:
     rd_pointh operator* (class rd_xform matrix);
     rd_pointh operator+ (rd_pointh point);
     rd_pointh operator- (rd_pointh point);
+    rd_pointh operator/ (float divisor);
     rd_pointh operator* (float scalar);
     float& operator[] (int index);
 

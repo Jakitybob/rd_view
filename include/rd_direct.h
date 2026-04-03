@@ -41,7 +41,7 @@ private:
     bool check_point_clip(class rd_pointh point);
     void render_line(class rd_pointh point, bool should_draw);
     void clip_line(class rd_pointh point, bool should_draw);
-    void plot_line(class rd_pointh point, bool should_draw);
+    void plot_line(class rd_pointh point);
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);
