@@ -18,6 +18,7 @@ Purpose: This file implements some of the rd_direct rendering
 #include "rd_xform.h"
 #include "rd_pointc.h"
 #include "rd_pointh.h"
+#include "rd_pointa.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
 int REDirect::rd_display(const string &name, const string &type, const string &mode)

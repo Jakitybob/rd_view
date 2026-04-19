@@ -38,6 +38,7 @@ add_executable(${PROJECT_NAME}
         include/rd_pointh.h
         src/rd_xform.cpp
         include/rd_xform.h
+        include/rd_pointa.h
 )
 
 # Link the library to the executable
