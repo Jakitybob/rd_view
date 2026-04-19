@@ -660,8 +660,8 @@ void REDirect::calculate_world_to_clip()
 {
     // Create our camera vectors to create the view matrix
     rd_vector world_up(camera_up);
-    rd_vector forward = (camera_at - camera_eye).normalized();
-    rd_vector right = (world_up * forward).normalized();
+    rd_vector forward = (camera_eye - camera_at).normalized();
+    rd_vector right = (forward * world_up).normalized();
     rd_vector up = (right * forward).normalized();
 
     // Create the view matrix using the forward, right, and up vectors from the camera
@@ -678,9 +678,16 @@ void REDirect::calculate_world_to_clip()
     rd_xform perspective_matrix = {
         1/(aspect_ratio * fov_scale), 0, 0, 0,
         0, 1/fov_scale, 0, 0,
-        0, 0, (far_clip + near_clip)/(near_clip - far_clip), (2 * far_clip * near_clip)/(near_clip - far_clip),
-        0, 0, -1, 0
+        0, 0, far_clip/(far_clip - near_clip), (-far_clip * near_clip)/(far_clip - near_clip),
+        0, 0, 1, 0
     };
+
+    // Scale and translate our perspective matrix to get it into its final form
+    rd_xform translation;
+    translation.set_translation(1, 1, 0);
+    rd_xform scale;
+    scale.set_scale(0.5, 0.5, 1);
+    perspective_matrix = scale * translation * perspective_matrix;
 
     // Store our final world to clip matrix by finding the cross product perspective x view
     world_to_clip = perspective_matrix * view_matrix;
@@ -690,11 +697,14 @@ void REDirect::calculate_world_to_clip()
 /// and stores it directly into our global matrix variable
 void REDirect::calculate_clip_to_device()
 {
+    // Tiny epsilon to subtract so our things don't go off-screen
+    float epsilon = 0.001;
+
     // Create our clip to device matrix and store it into our global variable
     clip_to_device = {
-        ((float)display_xSize / 2), 0, 0, ((float)display_xSize / 2),
-        0, ((float)display_ySize / 2), 0, ((float)display_ySize / 2),
-        0, 0, 0.5, 0.5,
+        ((float)display_xSize - epsilon), 0, 0, 0,
+        0, -((float)display_ySize - epsilon), 0, ((float)display_ySize - epsilon),
+        0, 0, 1, 0,
         0, 0, 0, 1
     };
 }
@@ -734,9 +744,9 @@ bool REDirect::check_point_clip(rd_pointh point)
 {
     // Create a simple boundary coordinate array
     float boundary_coordinates[6] = {
-        point.get_x() + point.get_w(), point.get_w() - point.get_x(),
-        point.get_y() + point.get_w(), point.get_w() - point.get_y(),
-        point.get_z() + point.get_w(), point.get_w() - point.get_z()
+        point.get_x(), point.get_w() - point.get_x(),
+        point.get_y(), point.get_w() - point.get_y(),
+        point.get_z(), point.get_w() - point.get_z()
     };
 
     // Traverse the boundary coordinates and return true to clip the point if any coord is negative
@@ -781,9 +791,9 @@ void REDirect::clip_line(rd_pointh point, bool should_draw)
 
     // Create our boundary coordinate from the homogenous point
     float boundaryCoords[6] = {
-        point.get_x() + point.get_w(), point.get_w() - point.get_x(),
-        point.get_y() + point.get_w(), point.get_w() - point.get_y(),
-        point.get_z() + point.get_w(), point.get_w() - point.get_z()
+        point.get_x(), point.get_w() - point.get_x(),
+        point.get_y(), point.get_w() - point.get_y(),
+        point.get_z(), point.get_w() - point.get_z()
     };
 
     // Create the kode and mask
