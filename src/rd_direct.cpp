@@ -14,6 +14,8 @@ Purpose: This file implements some of the rd_direct rendering
 #include <algorithm>
 #include <bitset>
 #include <cmath>
+
+#include "rd_edge.h"
 #include "rd_vector.h"
 #include "rd_xform.h"
 #include "rd_pointc.h"
@@ -60,10 +62,14 @@ int REDirect::rd_world_begin()
             depth_buffer[index] = new float[display_xSize];
     }
 
-    // Clear out the depth buffer by initializing all values to zero
+    // Clear out the depth buffer by initializing all values to one
     for (int index = 0; index < display_ySize; index++)
         for (int sub_index = 0; sub_index < display_xSize; sub_index++)
             depth_buffer[index][sub_index] = 1;
+
+    // Initialize the edge table
+    if (edge_table == nullptr)
+        edge_table = new rd_edge[display_ySize];
 
     // Initialize the frame and return OK
     rd_disp_init_frame(frame_number);
@@ -102,6 +108,9 @@ int REDirect::rd_render_cleanup()
 
     // Free the memory for the rows of the depth buffer
     delete[] depth_buffer;
+
+    // Free up the memory for the edge table
+    delete[] edge_table;
 
     return RD_OK;
 }
@@ -425,7 +434,29 @@ int REDirect::rd_cone(float height, float radius, float thetamax)
 /// transformed and sent through the world -> device pipeline.
 int REDirect::rd_cube()
 {
-    // Draw the bottom face of the square
+    // Create points for the bottom face of the cube
+    rd_pointa point;
+    point.coord[0] = -1;
+    point.coord[1] = -1;
+    point.coord[2] = -1;
+    render_poly(point, false);
+
+    point.coord[0] = -1;
+    point.coord[1] = -1;
+    point.coord[2] = 1;
+    render_poly(point, false);
+
+    point.coord[0] = 1;
+    point.coord[1] = -1;
+    point.coord[2] = 1;
+    render_poly(point, false);
+
+    point.coord[0] = 1;
+    point.coord[1] = -1;
+    point.coord[2] = -1;
+    render_poly(point, true);
+
+    /*// Draw the bottom face of the square
     rd_line(new float[3] {-1, -1, -1}, new float[3] {-1, -1, 1});
     rd_line(new float[3] {-1, -1, 1}, new float[3] {1, -1, 1});
     rd_line(new float[3] {1, -1, 1}, new float[3] {1, -1, -1});
@@ -442,6 +473,7 @@ int REDirect::rd_cube()
     rd_line(new float[3] {-1, 1, 1}, new float[3] {-1, -1, 1});
     rd_line(new float[3] {-1, 1, -1}, new float[3] {-1, -1, -1});
     rd_line(new float[3] {1, 1, -1}, new float[3] {1, -1, -1});
+    */
 
     return RD_OK;
 }
@@ -915,6 +947,132 @@ void REDirect::plot_line(rd_pointh point)
         // Plot our pixel on the screen at the x and y
         plot_pixel(new_point);
     }
+}
+
+///
+/// @param point The attributed point to add to the pipeline.
+/// @param should_draw Whether we should render a full polygon from this point to the rest currently stored.
+int REDirect::render_poly(rd_pointa point, bool should_draw)
+{
+    // Variables for working with points easier
+    rd_pointh geometry, normal, dev;
+
+    // Set up some static variables for keeping track of current vertices
+    const int MAX_VERTEX_LIST_SIZE = 50;
+    static rd_pointa vertex_list[MAX_VERTEX_LIST_SIZE];
+    static rd_pointa clipped_list[MAX_VERTEX_LIST_SIZE];
+    static int num_vertex = 0;
+
+    // Run geometry through current transform
+    geometry[0] = point.coord[0];
+    geometry[1] = point.coord[1];
+    geometry[2] = point.coord[2];
+    geometry[3] = point.coord[3];
+    geometry = current_transform * geometry;
+    geometry = world_to_clip * geometry; // Run through world-
+
+    // Put the transformed vertex back into the attributed point
+    point.coord[0] = geometry[0];
+    point.coord[1] = geometry[1];
+    point.coord[2] = geometry[2];
+    point.coord[3] = geometry[3];
+
+    // Store in vertex list
+    if (num_vertex == MAX_VERTEX_LIST_SIZE)
+        return -1; // Too many vertices, overflow
+
+    vertex_list[num_vertex] = point;
+    num_vertex++;
+
+    // Move along to the next vertex if we shouldn't draw
+    if (!should_draw)
+        return 0;
+
+    // Otherwise pass our info down to poly_clip -- continue if there is something to draw
+    if ((num_vertex = clip_poly(num_vertex, vertex_list, clipped_list)))
+    {
+        // Pre-process the vertex list
+        for (int index = 0; index < num_vertex; index++)
+        {
+            // Convert the geometry to device coordinates
+            dev[0] = clipped_list[index].coord[0];
+            dev[1] = clipped_list[index].coord[1];
+            dev[2] = clipped_list[index].coord[2];
+            dev[3] = clipped_list[index].coord[3];
+            dev = clip_to_device * dev;
+
+            // Put the X and Y back in as they're the only ones changed meaningfully
+            clipped_list[index].coord[0] = dev[0];
+            clipped_list[index].coord[1] = dev[1];
+
+            // Perform the perspective divide
+            clipped_list[index].coord[0] /= clipped_list[index].coord[3];
+            clipped_list[index].coord[1] /= clipped_list[index].coord[3];
+            clipped_list[index].coord[2] /= clipped_list[index].coord[3];
+        }
+
+        // Pass the clipped geometry into the scan conversion function
+        draw_poly(num_vertex, clipped_list);
+    }
+
+    // Reset our vertex list for the next polygon
+    num_vertex = 0;
+    return 0;
+}
+
+///
+int REDirect::clip_poly(int num_vertex, rd_pointa *vertex_list, rd_pointa *clipped_list)
+{
+    return num_vertex;
+}
+
+///
+void REDirect::draw_poly(int num_vertex, rd_pointa *clipped_list)
+{
+    // Head of active edge table
+    rd_edge edge_head;
+
+    // Return if we don't cross any scan lines
+    if (!build_edge_list(num_vertex, clipped_list))
+        return;
+}
+
+///
+bool REDirect::build_edge_list(int num_vertex, rd_pointa *points)
+{
+    // The index of the trailing vertex of our edge
+    int v1 = num_vertex - 1;
+
+    // Create our return value defaulted to false
+    bool scanline_crossed = false;
+
+    // Loop over the leading vertices in the polygon
+    for (int v2 = 0; v2 < num_vertex; v2++)
+    {
+        // If v1 and v2 are on different y levels, set scanline_crossed to true
+        if (points[v1].coord[1] != points[v2].coord[1])
+        {
+            scanline_crossed = true;
+
+            // Make an edge record from v1 -> v2 if v1 is smaller
+            if (points[v1].coord[1] < points[v2].coord[2])
+                make_edge_record(points[v1], points[v2]);
+            else
+                make_edge_record(points[v2], points[v1]);
+        }
+
+        // Move to the next edge
+        v1 = v2;
+    }
+
+    return scanline_crossed;
+}
+
+///
+void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
+{
+    // Create the increment for the new edge
+    float dy = upper.coord[1] - lower.coord[1];
 }
 
 /// Renders a simple circle in 3D space, using the line rendering pipeline to

@@ -17,6 +17,8 @@ Purpose: This class implements simple rendering algorithms and is
 #include "rd_error.h"
 #include "global_variables.h"
 #include <string>
+
+#include "rd_pointa.h"
 using std::string;
 #include <iostream>
 #include <ostream>
@@ -42,6 +44,13 @@ private:
     void render_line(class rd_pointh point, bool should_draw);
     void clip_line(class rd_pointh point, bool should_draw);
     void plot_line(class rd_pointh point);
+    int render_poly(rd_pointa point, bool should_draw);
+    int clip_poly(int num_vertex, rd_pointa* vertex_list, rd_pointa* clipped_list);
+    void draw_poly(int num_vertex, rd_pointa* clipped_list);
+
+    // Functions for scan conversion inside of draw_poly
+    bool build_edge_list(int num_vertex, rd_pointa* points);
+    void make_edge_record(rd_pointa v1, rd_pointa v2);
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);
