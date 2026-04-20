@@ -25,9 +25,21 @@ Purpose: This header implements a simple attributed point
 #define ATTR_WORLD_Z  15
 #define ATTR_SIZE     16
 
-typedef struct
+class rd_pointa
 {
+public:
+    // Size 16 array of floats.
     float coord[ATTR_SIZE];
-} rd_pointa;
+
+    // Constructors
+    rd_pointa();
+    rd_pointa(float x, float y, float z, float w);
+
+    // Operator Overloads
+    rd_pointa operator+ (rd_pointa point);
+    rd_pointa operator- (rd_pointa point);
+    rd_pointa operator/ (float divisor);
+    friend rd_pointa operator* (float factor, const rd_pointa& point); // Non-member overload for left-hand float mult
+};
 
 #endif //RD_VIEW_RD_POINTA_H

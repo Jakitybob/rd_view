@@ -51,6 +51,12 @@ private:
     // Functions for scan conversion inside of draw_poly
     bool build_edge_list(int num_vertex, rd_pointa* points);
     void make_edge_record(rd_pointa v1, rd_pointa v2);
+    void add_active_list(int scanline, rd_edge* aet);
+    void insert_edge(rd_edge* list, rd_edge* edge);
+    void update_aet(int scanline, rd_edge* aet);
+    void delete_edge(rd_edge* edge);
+    void resort_aet(rd_edge* aet);
+    void fill_between_edges(int scanline, rd_edge* aet);
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);

@@ -1073,6 +1073,44 @@ void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
 {
     // Create the increment for the new edge
     float dy = upper.coord[1] - lower.coord[1];
+
+    // Create the pointer for the new edge
+    rd_edge* edge = new rd_edge();
+    edge->increment = (upper - lower) / dy;
+
+    // Ensure the edge starts on a scanline
+    float factor = ceilf(lower.coord[1]) - lower.coord[1]; // Fractional pos of first scanline given here
+
+    // Calculate the starting values for the edge
+    edge->point = lower + factor * edge->increment;
+
+    // Find the last scanline for the edge and insert it into the edge table list
+    edge->yLast = ceil(upper.coord[1]) - 1;
+    // TODO: Insert edge here
+}
+
+void REDirect::add_active_list(int scanline, rd_edge *aet)
+{
+}
+
+void REDirect::insert_edge(rd_edge *list, rd_edge *edge)
+{
+}
+
+void REDirect::update_aet(int scanline, rd_edge *aet)
+{
+}
+
+void REDirect::delete_edge(rd_edge *edge)
+{
+}
+
+void REDirect::resort_aet(rd_edge *aet)
+{
+}
+
+void REDirect::fill_between_edges(int scanline, rd_edge *aet)
+{
 }
 
 /// Renders a simple circle in 3D space, using the line rendering pipeline to
