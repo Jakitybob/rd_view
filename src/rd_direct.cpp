@@ -415,15 +415,16 @@ int REDirect::rd_cone(float height, float radius, float thetamax)
     // Draw each segment's face along the edge of the circle at the base
     for (int index = 1; index <= NUM_SEGMENTS; index++)
     {
-        // Put the initial point of the face into the pipeline but don't draw anything yet
-        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), 0), false);
+        // Put the first part of the base into the pipeline
+        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), 0, 1), false);
 
-        // Update the angle to the next step
+        // Update the angle to the next step and add the other side of the base
         angle = index * 2 * M_PI/NUM_SEGMENTS;
+        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), 0, 1), false);
 
-        // Plot the line of the base and the line to the tip of the cone
-        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), 0), true);
-        render_line(rd_pointh(0, 0, height), true);
+        // Put two vertices at the top (two for lighting purposes!)
+        render_poly(rd_pointa(0, 0, height, 1), false);
+        render_poly(rd_pointa(0, 0, height, 1), true);
     }
 
     return RD_OK;
@@ -486,19 +487,14 @@ int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
     // Draw each segment's face along the edge of the circles
     for (int index = 1; index <= NUM_SEGMENTS; index++)
     {
-        // Calculate the end point of this face at the top of the cylinder
-        rd_pointh end_point(radius * cosf(angle), radius * sinf(angle), zmax);
+        float last_angle = angle;
+        angle = index * 2 * M_PI/NUM_SEGMENTS; // Move angle to the next step
 
-        // Put the initial point of the face into the pipeline but don't draw anything yet
-        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmin), false);
-
-        // Update the angle to the next step
-        angle = index * 2 * M_PI/NUM_SEGMENTS;
-
-        // Plot the three edges of the rectangle
-        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmin), true);
-        render_line(rd_pointh(radius * cosf(angle), radius * sinf(angle), zmax), true);
-        render_line(end_point, true);
+        // Put each point in the pipeline and draw the polygon
+        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), zmin, 1), false);
+        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), zmin, 1), false);
+        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), zmax, 1), false);
+        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), zmax, 1), true);
     }
 
     return RD_OK;
@@ -1068,7 +1064,7 @@ bool REDirect::build_edge_list(int num_vertex, rd_pointa *points)
     for (int v2 = 0; v2 < num_vertex; v2++)
     {
         // If v1 and v2 are on different y levels, set scanline_crossed to true
-        if (points[v1].coord[1] != points[v2].coord[1])
+        if ((int)points[v1].coord[1] != (int)points[v2].coord[1])
         {
             scanline_crossed = true;
 
@@ -1197,17 +1193,7 @@ void REDirect::resort_aet(rd_edge *aet)
 ///
 void REDirect::fill_between_edges(int scanline, rd_edge *aet)
 {
-    rd_edge* q = aet, *p = aet->next;
-    while (q)
-    {
-        q = p;
-        if (q) p = q->next;
-    }
-
-    //
-    rd_edge* current, *next;
-
-    current = aet->next;
+    rd_edge *current = aet->next, *next;
     while (current)
     {
         // Get the pair of edges from the active edge table
@@ -1218,6 +1204,7 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
         {
             // Calculate the attribute increments along the scanline
             float dx = next->point.coord[0] - current->point.coord[0];
+            if (fabs(dx) < 1e-6f) std::cout << "tiny dx" << std::endl;
             rd_pointa increment = (next->point - current->point) / dx;
 
             // Find the starting values for the edge
@@ -1235,10 +1222,10 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
                 // Increment the values
                 value = value + increment;
             }
-
-            // Move to the next edge pair
-            current = next->next;
         }
+
+        // Move to the next edge pair
+        current = next->next;
     }
 }
 
