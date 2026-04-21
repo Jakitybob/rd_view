@@ -1367,17 +1367,17 @@ bool REDirect::inside_boundary(rd_pointa point, int boundary)
     switch (boundary)
     {
         case 0: // left boundary
-            return point.coord[0] > 0;
+            return point.coord[0] >= 0;
         case 1: // right boundary
-            return point.coord[3] - point.coord[0] > 0;
+            return point.coord[3] - point.coord[0] >= 0;
         case 2: // bottom boundary
-            return point.coord[1] > 0;
+            return point.coord[1] >= 0;
         case 3: // top boundary
-            return point.coord[3] - point.coord[1] > 0;
+            return point.coord[3] - point.coord[1] >= 0;
         case 4: // front boundary
-            return point.coord[2] > 0;
+            return point.coord[2] >= 0;
         case 5: // back boundary
-            return point.coord[3] - point.coord[2] > 0;
+            return point.coord[3] - point.coord[2] >= 0;
     }
 
     // Return false if somehow an invalid boundary was used
