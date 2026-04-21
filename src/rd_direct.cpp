@@ -1298,7 +1298,7 @@ void REDirect::clip_vertex(rd_pointa vertex, int boundary, rd_pointa *first_arra
         // Check edge from last to current
         if (crosses_boundary(last_array[boundary], vertex, boundary))
         {
-            rd_pointa intersection = boundary_intersection(last_array[boundary], vertex, boundary);
+            rd_pointa intersection = boundary_intersection(vertex, last_array[boundary], boundary);
             if (boundary == 5) // If we're at the last boundary index output the point
             {
                 clipped_list[*vertex_count] = intersection;
