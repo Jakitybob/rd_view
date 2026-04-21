@@ -434,46 +434,41 @@ int REDirect::rd_cone(float height, float radius, float thetamax)
 /// transformed and sent through the world -> device pipeline.
 int REDirect::rd_cube()
 {
-    // Create points for the bottom face of the cube
-    rd_pointa point;
-    point.coord[0] = -1;
-    point.coord[1] = -1;
-    point.coord[2] = -1;
-    render_poly(point, false);
+    // Draw the bottom face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, -1, -1, 1), true);
 
-    point.coord[0] = -1;
-    point.coord[1] = -1;
-    point.coord[2] = 1;
-    render_poly(point, false);
+    // Draw the back face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, -1, -1, 1), true);
 
-    point.coord[0] = 1;
-    point.coord[1] = -1;
-    point.coord[2] = 1;
-    render_poly(point, false);
+    // Draw the right face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, -1, -1, 1), true);
 
-    point.coord[0] = 1;
-    point.coord[1] = -1;
-    point.coord[2] = -1;
-    render_poly(point, true);
+    // Draw the front face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, 1, 1, 1), false);
+    render_poly(rd_pointa(-1, 1, 1, 1), true);
 
-    /*// Draw the bottom face of the square
-    rd_line(new float[3] {-1, -1, -1}, new float[3] {-1, -1, 1});
-    rd_line(new float[3] {-1, -1, 1}, new float[3] {1, -1, 1});
-    rd_line(new float[3] {1, -1, 1}, new float[3] {1, -1, -1});
-    rd_line(new float[3] {1, -1, -1}, new float[3] {-1, -1, -1});
+    // Draw the left face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, -1, -1, 1), true);
 
-    // Draw the top face of the square
-    rd_line(new float[3] {1, 1, 1}, new float[3] {1, 1, -1});
-    rd_line(new float[3] {1, 1, -1}, new float[3] {-1, 1, -1});
-    rd_line(new float[3] {-1, 1, -1}, new float[3] {-1, 1, 1});
-    rd_line(new float[3] {-1, 1, 1}, new float[3] {1, 1, 1});
-
-    // Connect the top and the bottom
-    rd_line(new float[3] {1, 1, 1}, new float[3] {1, -1, 1});
-    rd_line(new float[3] {-1, 1, 1}, new float[3] {-1, -1, 1});
-    rd_line(new float[3] {-1, 1, -1}, new float[3] {-1, -1, -1});
-    rd_line(new float[3] {1, 1, -1}, new float[3] {1, -1, -1});
-    */
+    // Draw the top face of the cube
+    render_poly(rd_pointa(-1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, -1, -1, 1), true);
 
     return RD_OK;
 }
@@ -669,8 +664,12 @@ void REDirect::flood_fill(const float seed_point[3], float seed_color[3])
 /// should be drawn or not and draws it and updates the z-buffer if
 /// it should in fact be drawn.
 /// @param point The cartesian point to draw.
-void REDirect::plot_pixel(rd_pointc point)
+void REDirect::plot_pixel(rd_pointc point, float* color = nullptr)
 {
+    // If color is nullptr, set it to the global drawColor
+    if (color == nullptr)
+        color = new float[3] {drawRed, drawGreen, drawBlue};
+
     // Store out our x and y from the point
     int x = (int)point.get_x();
     int y = (int)point.get_y();
@@ -682,7 +681,7 @@ void REDirect::plot_pixel(rd_pointc point)
     // Check if the z-value of the point is larger than the point in the buffer
     if (point.get_z() < depth_buffer[y][x])
     {
-        rd_write_pixel((int)point.get_x(), (int)point.get_y(), new float[3] {drawRed, drawGreen, drawBlue});
+        rd_write_pixel((int)point.get_x(), (int)point.get_y(), color);
         depth_buffer[y][x] = point.get_z();
     }
 }
@@ -709,18 +708,11 @@ void REDirect::calculate_world_to_clip()
     float fov_scale = tanf((camera_fov / 2) * (M_PI/180));
     float aspect_ratio = (float)display_xSize / (float)display_ySize;
     rd_xform perspective_matrix = {
-        1/(aspect_ratio * fov_scale), 0, 0, 0,
-        0, 1/fov_scale, 0, 0,
+        1/(2 * aspect_ratio * fov_scale), 0, 0.5, 0,
+        0, 1/(2 * fov_scale), 0.5, 0,
         0, 0, far_clip/(far_clip - near_clip), (-far_clip * near_clip)/(far_clip - near_clip),
         0, 0, 1, 0
     };
-
-    // Scale and translate our perspective matrix to get it into its final form
-    rd_xform translation;
-    translation.set_translation(1, 1, 0);
-    rd_xform scale;
-    scale.set_scale(0.5, 0.5, 1);
-    perspective_matrix = scale * translation * perspective_matrix;
 
     // Store our final world to clip matrix by finding the cross product perspective x view
     world_to_clip = perspective_matrix * view_matrix;
@@ -1023,6 +1015,11 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
 ///
 int REDirect::clip_poly(int num_vertex, rd_pointa *vertex_list, rd_pointa *clipped_list)
 {
+    // Move vertex_list into clipped_list
+    // TODO: actually implement this function
+    for (int index = 0; index < num_vertex; index++)
+        clipped_list[index] = vertex_list[index];
+
     return num_vertex;
 }
 
@@ -1030,11 +1027,32 @@ int REDirect::clip_poly(int num_vertex, rd_pointa *vertex_list, rd_pointa *clipp
 void REDirect::draw_poly(int num_vertex, rd_pointa *clipped_list)
 {
     // Head of active edge table
-    rd_edge edge_head;
+    rd_edge* active_edge_table;
 
     // Return if we don't cross any scan lines
     if (!build_edge_list(num_vertex, clipped_list))
         return;
+
+    // Clear the active edge table
+    active_edge_table = new rd_edge;
+
+    // Scan over the scanlines of the display
+    for (int scanline = 0; scanline < display_ySize; scanline++)
+    {
+        // Take the edge starting on this scanline and add it to the AET
+        add_active_list(scanline, active_edge_table);
+
+        // Draw if the AET is not empty on this scanline
+        if (active_edge_table->next != nullptr)
+        {
+            fill_between_edges(scanline, active_edge_table);
+            update_aet(scanline, active_edge_table);
+            resort_aet(active_edge_table);
+        }
+    }
+
+    // Delete the last part of the AET
+    delete active_edge_table;
 }
 
 ///
@@ -1055,7 +1073,7 @@ bool REDirect::build_edge_list(int num_vertex, rd_pointa *points)
             scanline_crossed = true;
 
             // Make an edge record from v1 -> v2 if v1 is smaller
-            if (points[v1].coord[1] < points[v2].coord[2])
+            if (points[v1].coord[1] < points[v2].coord[1])
                 make_edge_record(points[v1], points[v2]);
             else
                 make_edge_record(points[v2], points[v1]);
@@ -1082,35 +1100,146 @@ void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
     float factor = ceilf(lower.coord[1]) - lower.coord[1]; // Fractional pos of first scanline given here
 
     // Calculate the starting values for the edge
-    edge->point = lower + factor * edge->increment;
+    edge->point = lower + (factor * edge->increment);
 
     // Find the last scanline for the edge and insert it into the edge table list
     edge->yLast = ceil(upper.coord[1]) - 1;
-    // TODO: Insert edge here
+    insert_edge(&edge_table[(int)ceilf(lower.coord[1])], edge);
 }
 
+///
 void REDirect::add_active_list(int scanline, rd_edge *aet)
 {
+    // Get the edges starting on the scanline
+    rd_edge* next = edge_table[scanline].next;
+
+    // Move through the list and insert each entry into the active edge table
+    rd_edge* held_list;
+    while (next)
+    {
+        held_list = next->next; // Hold the rest of the list
+        insert_edge(aet, next);
+        next = held_list;
+    }
+
+    // Keep the edge table clean -- edges have been transferred
+    edge_table[scanline].next = nullptr;
 }
 
+///
 void REDirect::insert_edge(rd_edge *list, rd_edge *edge)
 {
+    // Create two pointers to sort the edges by x-coordinate values
+    rd_edge* p, *q = list;
+
+    // p leads the list
+    p = q->next;
+    while (p != nullptr && (edge->point.coord[0] > p->point.coord[0]))
+    {
+        // Step to the next edge
+        q = p;
+        p = p->next;
+    }
+
+    // Link the edge into the list after q
+    edge->next = q->next;
+    q->next = edge;
 }
 
+///
 void REDirect::update_aet(int scanline, rd_edge *aet)
 {
+    // Keep track of our active and next active edges
+    rd_edge* active = aet, *next = aet->next;
+
+    while (next)
+    {
+        // Check if we're on the last scanline of the edge
+        if (scanline == next->yLast)
+        {
+            // If yes, move p along and get rid of tail node
+            next = next->next;
+            delete_next_edge(active);
+        }
+        else // If not, update attributed values
+        {
+            next->point = next->point + next->increment;
+            active = next;
+            next = next->next;
+        }
+    }
 }
 
-void REDirect::delete_edge(rd_edge *edge)
+///
+void REDirect::delete_next_edge(rd_edge *edge)
 {
+    rd_edge* deletee = edge->next;
+    edge->next = deletee->next;
+    delete deletee;
 }
 
+///
 void REDirect::resort_aet(rd_edge *aet)
 {
+    // Hold temporary pointers to edges for moving them around
+    rd_edge* q, *p = aet->next;
+
+    // Resort the table by increasing x-values
+    aet->next = nullptr;
+    while (p)
+    {
+        q = p->next;
+        insert_edge(aet, p);
+        p = q;
+    }
 }
 
+///
 void REDirect::fill_between_edges(int scanline, rd_edge *aet)
 {
+    rd_edge* q = aet, *p = aet->next;
+    while (q)
+    {
+        q = p;
+        if (q) p = q->next;
+    }
+
+    //
+    rd_edge* current, *next;
+
+    current = aet->next;
+    while (current)
+    {
+        // Get the pair of edges from the active edge table
+        next = current->next;
+
+        // If they are not at the same x, calculate the increment and draw
+        if (current->point.coord[0] != next->point.coord[0])
+        {
+            // Calculate the attribute increments along the scanline
+            float dx = next->point.coord[0] - current->point.coord[0];
+            rd_pointa increment = (next->point - current->point) / dx;
+
+            // Find the starting values for the edge
+            float factor = ceilf(current->point.coord[0]) - current->point.coord[0]; // Fractional pos for first pixel crossing
+            rd_pointa value = current->point + factor * increment;
+            float end_x = ceilf(next->point.coord[0]);
+
+            // While not at the end x, plot each pixel along the way
+            while (value.coord[0] < end_x)
+            {
+                //float color[3] = { value.coord[ATTR_R], value.coord[ATTR_G], value.coord[ATTR_B] };
+                rd_pointc point(value.coord[0], scanline, value.coord[2]);
+                plot_pixel(point);
+
+                // Increment the values
+                value = value + increment;
+            }
+
+            // Move to the next edge pair
+            current = next->next;
+        }
+    }
 }
 
 /// Renders a simple circle in 3D space, using the line rendering pipeline to

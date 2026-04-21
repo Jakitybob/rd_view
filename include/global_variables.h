@@ -16,6 +16,7 @@ Purpose: This file contains static global variables for the program
 #include "rd_pointc.h"
 #include "rd_pointh.h"
 
+struct rd_edge;
 // RGB draw color, default white
 static float drawRed = 1.0f;
 static float drawGreen = 1.0f;
@@ -46,7 +47,7 @@ static int NUM_SEGMENTS = 20; // The number of segments to use for round objects
 
 // The depth buffer for handling z-based depth when drawing pixels
 static float** depth_buffer = nullptr; // A two-dimensional array
-static struct rd_edge* edge_table = nullptr; // The table for each edge in a scanline
+static rd_edge* edge_table = nullptr; // The table for each edge in a scanline
 
 // Global variable for frame number
 static int frame_number = 0;

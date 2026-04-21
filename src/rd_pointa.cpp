@@ -36,30 +36,33 @@ rd_pointa::rd_pointa(float x, float y, float z, float w)
 ///     increased by the values in point.coord.
 rd_pointa rd_pointa::operator+(rd_pointa point)
 {
+    rd_pointa result;
     for (int index = 0; index < ATTR_SIZE; index++)
-        coord[index] = coord[index] + point.coord[index];
+        result.coord[index] = coord[index] + point.coord[index];
 
-    return *this;
+    return result;
 }
 
 /// @returns This attributed point with all values in coord
 ///     subtracted by the values in point.coord.
 rd_pointa rd_pointa::operator-(rd_pointa point)
 {
+    rd_pointa result;
     for (int index = 0; index < ATTR_SIZE; index++)
-        coord[index] = coord[index] - point.coord[index];
+        result.coord[index] = coord[index] - point.coord[index];
 
-    return *this;
+    return result;
 }
 
 /// @returns This attributed point with all values in coord
 ///     divided by the divisor.
 rd_pointa rd_pointa::operator/(float divisor)
 {
+    rd_pointa result;
     for (int index = 0; index < ATTR_SIZE; index++)
-        coord[index] = coord[index] / divisor;
+        result.coord[index] = coord[index] / divisor;
 
-    return *this;
+    return result;
 }
 
 /// @returns This attributed point with all values in coord
@@ -67,9 +70,9 @@ rd_pointa rd_pointa::operator/(float divisor)
 ///     multiplication :)
 rd_pointa operator*(float factor, const rd_pointa& point)
 {
-    rd_pointa new_point;
+    rd_pointa result;
     for (int index = 0; index < ATTR_SIZE; index++)
-        new_point.coord[index] = point.coord[index] * factor;
+        result.coord[index] = point.coord[index] * factor;
 
-    return new_point;
+    return result;
 }

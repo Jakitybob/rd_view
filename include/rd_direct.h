@@ -36,7 +36,7 @@ private:
     void flood_fill(const float seed_point[3], float seed_color[3]);
 
     // Graphics Pipeline functions
-    void plot_pixel(class rd_pointc point);
+    void plot_pixel(class rd_pointc point, float* color);
     void calculate_world_to_clip();
     void calculate_clip_to_device();
     void render_point(class rd_pointh point);
@@ -54,7 +54,7 @@ private:
     void add_active_list(int scanline, rd_edge* aet);
     void insert_edge(rd_edge* list, rd_edge* edge);
     void update_aet(int scanline, rd_edge* aet);
-    void delete_edge(rd_edge* edge);
+    void delete_next_edge(rd_edge* edge);
     void resort_aet(rd_edge* aet);
     void fill_between_edges(int scanline, rd_edge* aet);
 
