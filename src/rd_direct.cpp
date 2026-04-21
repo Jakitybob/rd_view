@@ -356,7 +356,8 @@ int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<f
     return RD_OK;
 }
 
-///
+/// Creates a set of polygons based on the information passed in,
+/// looping through each face and passing each point to the polygon pipeline.
 /// @param vertex_type UNUSED.
 /// @param nvertex The number of vertices in the array.
 /// @param vertex A reference to an array of floats that contain all vertex information.
@@ -800,7 +801,7 @@ void REDirect::clip_line(rd_pointh point, bool should_draw)
     for (int index = 0; index < 6; index++)
     {
         // Update the bit in our kode if the coordinate is negative
-        if (boundaryCoords[index] < -1e-5f)
+        if (boundaryCoords[index] < 0)
             kode |= mask;
 
         // Shift the mask by one bit left
@@ -913,9 +914,12 @@ void REDirect::plot_line(rd_pointh point)
     }
 }
 
-///
+/// This function acts as the entry point into the polygon pipeline, taking an attributed point
+/// and sending it all the way down through clipping and scan conversion to draw based on the
+/// vertices stored in the internal vertex_list at the time of a draw call.
 /// @param point The attributed point to add to the pipeline.
 /// @param should_draw Whether we should render a full polygon from this point to the rest currently stored.
+/// @return 0 if the polygon renders okay, and -1 if an error occurs.
 int REDirect::render_poly(rd_pointa point, bool should_draw)
 {
     // Variables for working with points easier
@@ -984,18 +988,11 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
     return 0;
 }
 
-///
-int REDirect::clip_poly(int num_vertex, rd_pointa *vertex_list, rd_pointa *clipped_list)
-{
-    // Move vertex_list into clipped_list
-    // TODO: actually implement this function
-    for (int index = 0; index < num_vertex; index++)
-        clipped_list[index] = vertex_list[index];
-
-    return num_vertex;
-}
-
-///
+/// This function takes clipped vertices and builds an edge table with
+/// them then begins scan conversion stepping through each line on
+/// the display and filling between any edges.
+/// @param num_vertex The number of vertices in the attributed point array.
+/// @param clipped_list An array of clipped attributed points.
 void REDirect::draw_poly(int num_vertex, rd_pointa *clipped_list)
 {
     // Head of active edge table
@@ -1027,7 +1024,12 @@ void REDirect::draw_poly(int num_vertex, rd_pointa *clipped_list)
     delete active_edge_table;
 }
 
-///
+/// Builds the edge list with the vertices by iterating through
+/// the vertices and checking for scanline crossings, creating
+/// edges from vertices that form an edge that crosses the scanlines.
+/// @param num_vertex Number of vertices in the attributed point array.
+/// @param points Attributed points to build the edge list from.
+/// @return True if at least one scanline is crossed and false if not.
 bool REDirect::build_edge_list(int num_vertex, rd_pointa *points)
 {
     // The index of the trailing vertex of our edge
@@ -1058,7 +1060,10 @@ bool REDirect::build_edge_list(int num_vertex, rd_pointa *points)
     return scanline_crossed;
 }
 
-///
+/// Creates a new edge between the provided vertices and inserts
+/// them into the edge table at ceil(lower.y).
+/// @param lower The attributed point with the lower y-value.
+/// @param upper The attributed point with the higher y-value.
 void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
 {
     // Create the increment for the new edge
@@ -1079,7 +1084,10 @@ void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
     insert_edge(&edge_table[(int)ceilf(lower.coord[1])], edge);
 }
 
-///
+/// Adds all edges at the specified scanline to the Active Edge Table
+/// and clears the normal edge table at that scanline.
+/// @param scanline The scanline number to make the active list from.
+/// @param aet Pointer to the head of the Active Edge Table.
 void REDirect::add_active_list(int scanline, rd_edge *aet)
 {
     // Get the edges starting on the scanline
@@ -1098,7 +1106,10 @@ void REDirect::add_active_list(int scanline, rd_edge *aet)
     edge_table[scanline].next = nullptr;
 }
 
-///
+/// Adds the specified edge to the edge list sorted by ascending
+/// x-coordinate values.
+/// @param list The head of the edge list to add the edge to.
+/// @param edge The edge to add to the edge list.
 void REDirect::insert_edge(rd_edge *list, rd_edge *edge)
 {
     // Create two pointers to sort the edges by x-coordinate values
@@ -1118,12 +1129,17 @@ void REDirect::insert_edge(rd_edge *list, rd_edge *edge)
     q->next = edge;
 }
 
-///
+/// Update the nodes in the Active Edge Table, either
+/// incrementing their values or deleting dead edges as
+/// we reach the end of the edge's span.
+/// @param scanline Scan line to check against yLast.
+/// @param aet Pointer to the head of the Active Edge Table.
 void REDirect::update_aet(int scanline, rd_edge *aet)
 {
     // Keep track of our active and next active edges
     rd_edge* active = aet, *next = aet->next;
 
+    // Iterate through each edge in the list
     while (next)
     {
         // Check if we're on the last scanline of the edge
@@ -1142,7 +1158,9 @@ void REDirect::update_aet(int scanline, rd_edge *aet)
     }
 }
 
-///
+/// Deletes the edge immediately proceeding the passed-in edge,
+/// shifting pointers around so as not to break the list.
+/// @param edge The edge to delete the next edge of.
 void REDirect::delete_next_edge(rd_edge *edge)
 {
     rd_edge* deletee = edge->next;
@@ -1150,7 +1168,9 @@ void REDirect::delete_next_edge(rd_edge *edge)
     delete deletee;
 }
 
-///
+/// Re-sorts the Active Edge Table by reinserting each edge
+/// to ensure proper sorting in x-ascending order.
+/// @param aet Pointer to the head of the Active Edge Table.
 void REDirect::resort_aet(rd_edge *aet)
 {
     // Hold temporary pointers to edges for moving them around
@@ -1166,7 +1186,11 @@ void REDirect::resort_aet(rd_edge *aet)
     }
 }
 
-///
+/// This function takes each edge pair from the Active Edge Table
+/// and fills in the area between them while incrementing all
+/// the attributed values as needed.
+/// @param scanline The scan line to fill, used as the y-value.
+/// @param aet Pointer to the head of the Active Edge Table.
 void REDirect::fill_between_edges(int scanline, rd_edge *aet)
 {
     rd_edge *current = aet->next, *next;
@@ -1180,7 +1204,6 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
         {
             // Calculate the attribute increments along the scanline
             float dx = next->point.coord[0] - current->point.coord[0];
-            if (fabs(dx) < 1e-6f) std::cout << "tiny dx" << std::endl;
             rd_pointa increment = (next->point - current->point) / dx;
 
             // Find the starting values for the edge
@@ -1203,6 +1226,196 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
         // Move to the next edge pair
         current = next->next;
     }
+}
+
+/// This function acts as the entry point to the polygon clipping algorithm
+/// heavily based on the Sutherland-Hodgman algorithm. It sets up the
+/// seen and flag arrays and begins recursion, while also handling the
+/// last vertices gracefully.
+/// @param num_vertex The number of vertices in the vertex list.
+/// @param vertex_list An array of vertices to run through clipping.
+/// @param clipped_list An array to pass out the clipped vertices to.
+/// @return The number of vertices inside clipped_list.
+int REDirect::clip_poly(int num_vertex, rd_pointa *vertex_list, rd_pointa *clipped_list)
+{
+    // Create our attributed point and flag arrays
+    rd_pointa first_seen[6], last_seen[6];
+    bool stage_seen[6];
+
+    // Create our count of vertices to return at the end
+    int vertex_count = 0;
+
+    // Initialize our flag array to false
+    for (int index = 0; index < 6; index++)
+        stage_seen[index] = false;
+
+    // Loop through all of our vertices and pass them into the recursive clipper
+    for (int index = 0; index < num_vertex; index++)
+        clip_vertex(vertex_list[index], 0, first_seen, last_seen, stage_seen, clipped_list, &vertex_count);
+
+    // Recursively handle the edge between first and last seen at each stage.
+    clip_last_vertex(first_seen, last_seen, stage_seen, clipped_list, &vertex_count);
+    return vertex_count;
+}
+
+/// This function passes the vertex through each boundary and calculates its
+/// intersection using something akin to Blinn's clipping algorithm. Points that
+/// don't cross boundaries are simply passed on or placed into the clipped_list if at the end.
+/// @param vertex The vertex to clip.
+/// @param boundary The boundary to clip the vertex on (0-5).
+/// @param first_array Array of attributed points that contain the first seen point for each boundary.
+/// @param last_array Array of attributed points that contain the last seen point for each boundary.
+/// @param flag_array Array of bools that say whether this boundary has been visited yet.
+/// @param clipped_list Array of attributed points to output clipped vertices into.
+/// @param vertex_count Pointer to the number of vertices placed inside clipped_list.
+void REDirect::clip_vertex(rd_pointa vertex, int boundary, rd_pointa *first_array, rd_pointa *last_array, bool *flag_array, rd_pointa* clipped_list, int *vertex_count)
+{
+    // Check if this is the first time a point has been seen by this stage
+    if (!flag_array[boundary]) // If yes, set this as the first point and toggle the flag
+    {
+        first_array[boundary] = vertex;
+        flag_array[boundary] = true;
+    }
+    else // Otherwise a previous point exists
+    {
+        // Check edge from last to current
+        if (crosses_boundary(last_array[boundary], vertex, boundary))
+        {
+            rd_pointa intersection = boundary_intersection(last_array[boundary], vertex, boundary);
+            if (boundary == 5) // If we're at the last boundary index output the point
+            {
+                clipped_list[*vertex_count] = intersection;
+                (*vertex_count)++;
+            }
+            else // Otherwise send it recursively to the next stage
+                clip_vertex(intersection, boundary + 1, first_array, last_array, flag_array, clipped_list, vertex_count);
+        }
+    }
+
+    // Save the most recent vertex seen at this edge
+    last_array[boundary] = vertex;
+
+    // If the vertex is inside the boundary, pass it along or put it into clipped_list
+    if (inside_boundary(vertex, boundary))
+    {
+        if (boundary == 5) // If we're at the last boundary index output the point
+        {
+            clipped_list[*vertex_count] = vertex;
+            (*vertex_count)++;
+        }
+        else // Otherwise send it recursively to the next stage
+            clip_vertex(vertex, boundary + 1, first_array, last_array, flag_array, clipped_list, vertex_count);
+    }
+}
+
+/// This function handles the special case of the edge formed between the first and last
+/// vertex seen at each boundary. It will only pass it through recursively if it crosses
+/// a boundary. Otherwise it will be left alone.
+/// @param first_array Array of attributed points that contain the first seen point for each boundary.
+/// @param last_array Array of attributed points that contain the last seen point for each boundary.
+/// @param flag_array Array of bools that say whether this boundary has been visited yet.
+/// @param clipped_list Array of attributed points to output clipped vertices into.
+/// @param vertex_count Pointer to the number of vertices placed inside clipped_list.
+void REDirect::clip_last_vertex(rd_pointa *first_array, rd_pointa *last_array, bool *flag_array, rd_pointa *clipped_list, int *vertex_count)
+{
+    // Iterate through each boundary stage
+    for (int index = 0; index < 6; index++)
+    {
+        // If this boundary wasn't used skip it
+        if (!flag_array[index]) continue;
+
+        // Only handle cases that intersect the boundary
+        if (crosses_boundary(last_array[index], first_array[index], index))
+        {
+            rd_pointa intersection = boundary_intersection(last_array[index], first_array[index], index);
+            if (index == 5) // If we're at the last boundary index output the point
+            {
+                clipped_list[*vertex_count] = intersection;
+                (*vertex_count)++;
+            }
+            else // Otherwise send it recursively to the next stage
+                clip_vertex(intersection, index + 1, first_array, last_array, flag_array, clipped_list, vertex_count);
+        }
+    }
+}
+
+/// Using the clipping planes from Blinn's algorithm, checks if
+/// the point is inside the specified boundary or not.
+/// @param point The attributed point to check.
+/// @param boundary The boundary to check against.
+/// @return True if the point is within the boundary and false if not.
+bool REDirect::inside_boundary(rd_pointa point, int boundary)
+{
+    // Use a switch to check the specified boundary
+    switch (boundary)
+    {
+        case 0: // left boundary
+            return point.coord[0] > 0;
+        case 1: // right boundary
+            return point.coord[3] - point.coord[0] > 0;
+        case 2: // bottom boundary
+            return point.coord[1] > 0;
+        case 3: // top boundary
+            return point.coord[3] - point.coord[1] > 0;
+        case 4: // front boundary
+            return point.coord[2] > 0;
+        case 5: // back boundary
+            return point.coord[3] - point.coord[2] > 0;
+    }
+
+    // Return false if somehow an invalid boundary was used
+    return false;
+}
+
+/// Checks if each point is inside the specified boundary and
+/// if one is and one is not then they cross the boundary.
+/// @param v1 The first vertex on the edge.
+/// @param v2 The second vertex on the edge.
+/// @param boundary The boundary to check against.
+/// @return True if the edge formed by the two points cross the boundary, else false.
+bool REDirect::crosses_boundary(rd_pointa v1, rd_pointa v2, int boundary)
+{
+    return inside_boundary(v1, boundary) != inside_boundary(v2, boundary);
+}
+
+/// Finds where the edge between v1 and v2 intersect the given boundary
+/// and returns that as an interpolated attributed point.
+/// @param v1 The first vertex on the edge.
+/// @param v2 The second vertex on the edge.
+/// @param boundary The boundary to find intersection against.
+/// @return The attributed point where the edge intersects with the boundary.
+rd_pointa REDirect::boundary_intersection(rd_pointa v1, rd_pointa v2, int boundary)
+{
+    // Use a switch to calculate alpha based on our boundary
+    float alpha = 0;
+    switch (boundary)
+    {
+        case 0: // left boundary (x)
+            alpha = v1.coord[0] / (v1.coord[0] - v2.coord[0]);
+            break;
+        case 1: // right boundary (w-x)
+            alpha = (v1.coord[3] - v1.coord[0]) / ((v1.coord[3] - v1.coord[0]) - (v2.coord[3] - v2.coord[0]));
+            break;
+        case 2: // bottom boundary (y)
+            alpha = v1.coord[1] / (v1.coord[1] - v2.coord[1]);
+            break;
+        case 3: // top boundary (w-y)
+            alpha = (v1.coord[3] - v1.coord[1]) / ((v1.coord[3] - v1.coord[1]) - (v2.coord[3] - v2.coord[1]));
+            break;
+        case 4: // front boundary (z)
+            alpha = v1.coord[2] / (v1.coord[2] - v2.coord[2]);
+            break;
+        case 5: // back boundary (w-z)
+            alpha = (v1.coord[3] - v1.coord[2]) / ((v1.coord[3] - v1.coord[2]) - (v2.coord[3] - v2.coord[2]));
+            break;
+    }
+
+    // Calculate the interpolation and return that
+    rd_pointa interpolated;
+    for (int index = 0; index < ATTR_SIZE; index++)
+        interpolated.coord[index] = v1.coord[index] + alpha * (v2.coord[index] - v1.coord[index]);
+
+    return interpolated;
 }
 
 /// Renders a simple circle in 3D space, using the line rendering pipeline to

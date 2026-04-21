@@ -45,7 +45,6 @@ private:
     void clip_line(class rd_pointh point, bool should_draw);
     void plot_line(class rd_pointh point);
     int render_poly(rd_pointa point, bool should_draw);
-    int clip_poly(int num_vertex, rd_pointa* vertex_list, rd_pointa* clipped_list);
     void draw_poly(int num_vertex, rd_pointa* clipped_list);
 
     // Functions for scan conversion inside of draw_poly
@@ -58,7 +57,13 @@ private:
     void resort_aet(rd_edge* aet);
     void fill_between_edges(int scanline, rd_edge* aet);
 
-    // Functions for polygon clipping
+    // Functions for polygon clipping TODO: move stuff out of here into their own classes, this is TOO BIG
+    int clip_poly(int num_vertex, rd_pointa* vertex_list, rd_pointa* clipped_list);
+    void clip_vertex(class rd_pointa vertex, int boundary, rd_pointa* first_array, rd_pointa* last_array, bool* flag_array, rd_pointa* clipped_list, int* vertex_count);
+    void clip_last_vertex(rd_pointa* first_array, rd_pointa* last_array, bool* flag_array, rd_pointa* clipped_list, int* vertex_count);
+    bool inside_boundary(class rd_pointa, int boundary);
+    bool crosses_boundary(class rd_pointa v1, class rd_pointa v2, int boundary);
+    class rd_pointa boundary_intersection(rd_pointa v1, rd_pointa v2, int boundary);
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);
