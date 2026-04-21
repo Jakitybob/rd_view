@@ -441,16 +441,16 @@ int REDirect::rd_cube()
     render_poly(rd_pointa(-1, -1, -1, 1), true);
 
     // Draw the back face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
     render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), true);
+    render_poly(rd_pointa(-1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, 1, -1, 1), false);
+    render_poly(rd_pointa(1, 1, -1, 1), true);
 
     // Draw the right face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
     render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), true);
+    render_poly(rd_pointa(1, 1, -1, 1), false);
+    render_poly(rd_pointa(1, 1, 1, 1), false);
+    render_poly(rd_pointa(1, -1, 1, 1), true);
 
     // Draw the front face of the cube
     render_poly(rd_pointa(-1, -1, 1, 1), false);
@@ -460,15 +460,15 @@ int REDirect::rd_cube()
 
     // Draw the left face of the cube
     render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), true);
+    render_poly(rd_pointa(-1, -1, -1, 1), false);
+    render_poly(rd_pointa(-1, 1, -1, 1), false);
+    render_poly(rd_pointa(-1, 1, 1, 1), true);
 
     // Draw the top face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), true);
+    render_poly(rd_pointa(1, 1, -1, 1), false);
+    render_poly(rd_pointa(1, 1, 1, 1), false);
+    render_poly(rd_pointa(-1, 1, 1, 1), false);
+    render_poly(rd_pointa(-1, 1, -1, 1), true);
 
     return RD_OK;
 }
