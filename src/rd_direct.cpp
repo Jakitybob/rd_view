@@ -491,7 +491,24 @@ int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
 /// @param theta UNUSED.
 int REDirect::rd_disk(float height, float radius, float theta)
 {
-    render_circle(radius, height);
+    // Create a float for our angle
+    float angle = 0; // In radians
+
+    // Draw each slice around the disk
+    for (int index = 1; index <= NUM_SEGMENTS; index++)
+    {
+        float last_angle = angle;
+        angle = index * 2 * M_PI/NUM_SEGMENTS;
+
+        // Pass the edge points into the poly pipeline
+        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), height, 1),false);
+        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), height, 1),false);
+
+        // Pass two vertices in the center of the disk (for normal generation)
+        render_poly(rd_pointa(0, 0, height, 1), false);
+        render_poly(rd_pointa(0, 0, height, 1), true);
+    }
+
     return RD_OK;
 }
 
@@ -1416,23 +1433,4 @@ rd_pointa REDirect::boundary_intersection(rd_pointa v1, rd_pointa v2, int bounda
         interpolated.coord[index] = v1.coord[index] + alpha * (v2.coord[index] - v1.coord[index]);
 
     return interpolated;
-}
-
-/// Renders a simple circle in 3D space, using the line rendering pipeline to
-/// draw a continuous set of line segments around the radius of the circle.
-/// @param radius A float that represents the radius of the circle.
-/// @param z The z-coordinate of the circle.
-void REDirect::render_circle(float radius, float z)
-{
-    // Create a float for our angle
-    float angle = 0; // In radians
-
-    // Pass our point into the line pipeline but only move as this is an initial point
-    render_line(rd_pointh(radius, angle, z), false);
-    for (int index = 1; index <= NUM_SEGMENTS; index++)
-    {
-        angle = index * 2 * M_PI/NUM_SEGMENTS;
-        rd_pointh point(radius * cosf(angle), radius * sinf(angle), z);
-        render_line(point, true); // Draw every point in the loop
-    }
 }
