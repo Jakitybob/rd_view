@@ -364,41 +364,24 @@ int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<f
 /// @param face
 int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<float> &vertex, int nface, const vector<int> &face)
 {
-    // Store out the first vertex of a plane to return back to
-    rd_pointh* first_vertex = nullptr;
-
     // Loop through each face to draw each line in the connected set.
     for (int index = 0; index < face.size(); index++)
     {
-        // Store the vertex we should draw from the face array
-        int vertex_num = face[index];
+        // Create the attributed point for this vertex
+        rd_pointa point(vertex[0 + face[index] * 3], vertex[1 + face[index] * 3], vertex[2 + face[index] * 3], 1);
 
-        //std::cout << "Vertex num: " << vertex_num << std::endl;
-
-        // If the vertex number is -1, draw the final line then reset first_vertex
-        if (vertex_num == -1)
+        // If the vertex number is -1, pass the last vertex in and draw
+        if (face[index + 1] == -1)
         {
-            render_line(*first_vertex, true);
-            delete first_vertex; // Free up the last point made
-            first_vertex = nullptr;
+            render_poly(point, true);
+            index++; // Double increment
             continue;
         }
 
-        // Create a point at our vertex
-        rd_pointh* point = new rd_pointh(vertex[0 + vertex_num * 3], vertex[1 + vertex_num * 3],  vertex[2 + vertex_num * 3]);
-
-        // If first_vertex is nullptr, set it to this vertex and move there without drawing
-        if (first_vertex == nullptr)
-        {
-            first_vertex = point;
-            render_line(*point, false);
-        }
-        else
-            render_line(*point, true);
+        // Otherwise pass in our vertex and move on
+        render_poly(point, false);
     }
 
-    // Free up memory and return
-    delete first_vertex;
     return RD_OK;
 }
 
@@ -538,18 +521,11 @@ int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
             float phi = longitude * (2 * M_PI / numLongitude);
             float phiNext = (longitude + 1) * (2 * M_PI / numLongitude);
 
-            // Create the four points
-            rd_pointc bottomLeft(radius * cosf(theta) * cosf(phi), radius * cosf(theta) * sinf(phi), radius * sinf(theta));
-            rd_pointc topLeft(radius * cosf(thetaNext) * cosf(phi), radius * cosf(thetaNext) * sinf(phi), radius * sinf(thetaNext));
-            rd_pointc bottomRight(radius * cosf(theta) * cosf(phiNext), radius * cosf(theta) * sinf(phiNext), radius * sinf(theta));
-            rd_pointc topRight(radius * cosf(thetaNext) * cosf(phiNext), radius * cosf(thetaNext) * sinf(phiNext), radius * sinf(thetaNext));
-
-            // Pass the four points in the line drawing routine to create a polygon
-            render_line(bottomLeft, false);
-            render_line(bottomRight, true);
-            render_line(topRight, true);
-            render_line(topLeft, true);
-            render_line(bottomLeft, true);
+            // Put each vertex into the polygon pipeline and draw it
+            render_poly(rd_pointa(radius * cosf(theta) * cosf(phi), radius * cosf(theta) * sinf(phi), radius * sinf(theta), 1), false); // bottom left
+            render_poly(rd_pointa(radius * cosf(thetaNext) * cosf(phi), radius * cosf(thetaNext) * sinf(phi), radius * sinf(thetaNext), 1), false); // top left
+            render_poly(rd_pointa(radius * cosf(thetaNext) * cosf(phiNext), radius * cosf(thetaNext) * sinf(phiNext), radius * sinf(thetaNext), 1), false); // top right
+            render_poly(rd_pointa(radius * cosf(theta) * cosf(phiNext), radius * cosf(theta) * sinf(phiNext), radius * sinf(theta), 1), true); // bottom right
         }
     }
 

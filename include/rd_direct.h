@@ -58,6 +58,8 @@ private:
     void resort_aet(rd_edge* aet);
     void fill_between_edges(int scanline, rd_edge* aet);
 
+    // Functions for polygon clipping
+
     // Primitive Rendering functions
     void render_circle(float radius, float z);
 
