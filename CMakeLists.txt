@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
         include/rd_pointa.h
         include/rd_edge.h
         src/rd_pointa.cpp
+        include/rd_lights.h
 )
 
 # Link the library to the executable
