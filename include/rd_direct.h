@@ -69,7 +69,7 @@ private:
     void render_circle(float radius, float z);
 
     // Utility functions
-    float clamp(float val, float min, float max);
+    static float clamp(float val, float min, float max);
 
 public:
     // GENERAL FUNCTIONS

@@ -745,6 +745,10 @@ void REDirect::matte_shader(float *color)
     color[0] += far_red;
     color[1] += far_green;
     color[2] += far_blue;
+
+    color[0] = clamp(color[0], 0.0, 1.0);
+    color[1] = clamp(color[1], 0.0, 1.0);
+    color[2] = clamp(color[2], 0.0, 1.0);
 }
 
 ///
