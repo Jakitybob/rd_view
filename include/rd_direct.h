@@ -63,12 +63,16 @@ private:
     void clip_last_vertex(rd_pointa* first_array, rd_pointa* last_array, bool* flag_array, rd_pointa* clipped_list, int* vertex_count);
     bool inside_boundary(class rd_pointa, int boundary);
     bool crosses_boundary(class rd_pointa v1, class rd_pointa v2, int boundary);
-    class rd_pointa boundary_intersection(rd_pointa v1, rd_pointa v2, int boundary);
+    rd_pointa boundary_intersection(rd_pointa v1, rd_pointa v2, int boundary);
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);
 
+    // Utility functions
+    float clamp(float val, float min, float max);
+
 public:
+    // GENERAL FUNCTIONS
     int rd_display(const string &name, const string &type, const string &mode) override;
     int rd_format(int xresolution, int yresolution) override;
     int rd_world_begin() override;
@@ -76,11 +80,15 @@ public:
     int rd_frame_begin(int frame_no) override;
     int rd_frame_end() override;
     int rd_render_cleanup(void) override;
+
+    // CAMERA
     int rd_camera_eye(const float eyepoint[3]) override;
     int rd_camera_at(const float atpoint[3]) override;
     int rd_camera_up(const float up[3]) override;
     int rd_camera_fov(float fov) override;
     int rd_clipping(float znear, float zfar) override;
+
+    // TRANSFORMATIONS
     int rd_translate(const float offset[3]) override;
     int rd_scale(const float scale_factor[3]) override;
     int rd_rotate_xy(float angle) override;
@@ -88,6 +96,8 @@ public:
     int rd_rotate_zx(float angle) override;
     int rd_xform_push(void) override;
     int rd_xform_pop(void) override;
+
+    // GEOMETRIC OBJECTS
     int rd_circle(const float center[3], float radius) override;
     int rd_line(const float start[3], const float end[3]) override;
     int rd_point(const float p[3]) override;
@@ -99,9 +109,24 @@ public:
     int rd_cylinder(float radius, float zmin, float zmax, float thetamax) override;
     int rd_disk(float height, float radius, float theta) override;
     int rd_sphere(float radius, float zmin, float zmax, float thetamax) override;
+
+    // LIGHTING & SHADING
     int rd_background(const float color[]) override;
     int rd_color(const float color[]) override;
     int rd_fill(const float seed_point[3]) override;
+    int rd_surface(const string & shader_type) override;
+    int rd_point_light(const float pos[3], const float color[], float intensity) override;
+    int rd_far_light  (const float dir[3], const float color[], float intensity) override;
+    int rd_ambient_light(const float color[], float intensity) override;
+    int rd_k_ambient(float Ka) override;
+    int rd_k_diffuse(float Kd) override;
+    int rd_k_specular(float Ks) override;
+    static void matte_shader(float* color);
+    static void metal_shader(float* color);
+    static void plastic_shader(float* color);
+
+    // OPTIONS
+    int rd_option_bool(const string& name, bool flag);
 };
 
 #endif /* RD_ENGINE_DIRECT_H */

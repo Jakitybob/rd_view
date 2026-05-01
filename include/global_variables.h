@@ -35,6 +35,7 @@ static float backgroundBlue = 0.0f;
 
 // Transformation matrices
 static rd_xform current_transform;
+static rd_xform normal_transform;
 static rd_xform world_to_clip;
 static rd_xform clip_to_device;
 
@@ -56,9 +57,11 @@ static float** depth_buffer = nullptr; // A two-dimensional array
 static rd_edge* edge_table = nullptr; // The table for each edge in a scanline
 
 // Lighting-related globals
-static rd_ambient_light ambient_light;
-static rd_far_light far_lights[MAX_LIGHTS];
-static rd_point_light point_lights[MAX_LIGHTS];
+static ambient_light global_ambient_light;
+static far_light far_lights[MAX_LIGHTS];
+static int num_far_lights = 0;
+static point_light point_lights[MAX_LIGHTS];
+static int num_point_lights = 0;
 static float ambient_coefficient = 1.f, diffuse_coefficient = 0.f, specular_coefficient = 0.f;
 static float surface_color[3] = {1.f, 1.f, 1.f}; // Default to white
 static float specular_color[3] = {1.f, 1.f, 1.f}; // Default to white
@@ -67,7 +70,7 @@ static bool vertex_color_flag = false, vertex_normal_flag = false, vertex_textur
 static rd_vector viewing_vector; // Direction from a surface point to the eye of the camera for a given polygon
 static rd_vector poly_normal; // Surface normal for a given polygon, may or may not be used
 static rd_pointa surface_point_values;
-// TODO: add shader function ptr here
+static void (*shader)(float*) = nullptr; // Function pointer for the shaders
 
 // Global variable for frame number
 static int frame_number = 0;

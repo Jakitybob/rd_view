@@ -34,12 +34,16 @@ public:
     // Constructors
     rd_pointa();
     rd_pointa(float x, float y, float z, float w);
+    rd_pointa(const rd_pointa& point);
 
     // Operator Overloads
     rd_pointa operator+ (rd_pointa point);
     rd_pointa operator- (rd_pointa point);
     rd_pointa operator/ (float divisor);
     friend rd_pointa operator* (float factor, const rd_pointa& point); // Non-member overload for left-hand float mult
+
+    // Member / utility functions for easier access
+    void set_normal(float nx, float ny, float nz);
 };
 
 #endif //RD_VIEW_RD_POINTA_H

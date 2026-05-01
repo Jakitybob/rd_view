@@ -21,6 +21,7 @@ Purpose: This file implements some of the rd_direct rendering
 #include "rd_pointc.h"
 #include "rd_pointh.h"
 #include "rd_pointa.h"
+#include "rd_lights.h"
 
 // Simple stub as functionality is handled behind the scenes currently.
 int REDirect::rd_display(const string &name, const string &type, const string &mode)
@@ -39,8 +40,9 @@ int REDirect::rd_format(int xresolution, int yresolution)
 /// initializing our depth buffer.
 int REDirect::rd_world_begin()
 {
-    // Reset the current transform global variable to an identity matrix
+    // Reset current transform and normal transform to identity matrices.
     current_transform = rd_xform();
+    normal_transform = rd_xform();
 
     // Make sure our transform stack is empty, and empty it if not
     while (!xform_stack.empty()) // It should always be empty but better safe than sorry
@@ -200,6 +202,10 @@ int REDirect::rd_scale(const float scale_factor[3])
     // Multiply this scaling matrix by our current transform and store it back into the global transform
     current_transform = current_transform * scale;
 
+    // Inverse the scale (1/s) and multiply it by our normal transform
+    scale.set_scale(1/scale_factor[0], 1/scale_factor[1], 1/scale_factor[2]);
+    normal_transform = scale * normal_transform;
+
     return RD_OK;
 }
 
@@ -212,8 +218,9 @@ int REDirect::rd_rotate_xy(float angle)
     rd_xform rotation;
     rotation.set_xy_rotation(angle);
 
-    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    // Multiply both of our transform matrices by this rotation
     current_transform = current_transform * rotation;
+    normal_transform = rotation * normal_transform;
 
     return RD_OK;
 }
@@ -227,8 +234,9 @@ int REDirect::rd_rotate_yz(float angle)
     rd_xform rotation;
     rotation.set_yz_rotation(angle);
 
-    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    // Multiply both of our transform matrices by this rotation
     current_transform = current_transform * rotation;
+    normal_transform = rotation * normal_transform;
 
     return RD_OK;
 }
@@ -242,28 +250,35 @@ int REDirect::rd_rotate_zx(float angle)
     rd_xform rotation;
     rotation.set_zx_rotation(angle);
 
-    // Multiply this rotation matrix by our current transform and store it back into the global transform
+    // Multiply both of our transform matrices by this rotation
     current_transform = current_transform * rotation;
+    normal_transform = rotation * normal_transform;
 
     return RD_OK;
 }
 
-/// Pushes the current transform onto the top of the
-/// transformation stack.
+/// Pushes the current transform and normal transform
+/// onto the stack, one after the other.
 int REDirect::rd_xform_push()
 {
-    // Push the current transform onto our transform stack
+    // Push both matrices onto the stack together
     xform_stack.push(current_transform);
+    xform_stack.push(normal_transform);
 
     return RD_OK;
 }
 
-/// Sets the current transform to whatever is on top
-/// of the transformation stack, then pops the top
-/// of the stack off.
+/// Sets the normal transform to the top of the
+/// stack and the current transform to what is
+/// directly below that, since they are always
+/// pushed together.
 int REDirect::rd_xform_pop()
 {
-    // Pop the transform from the top of the stack and set it as our current transform
+    // Update the normal transform and pop it off the top
+    normal_transform = xform_stack.top();
+    xform_stack.pop();
+
+    // Do the same for the current transform
     current_transform = xform_stack.top();
     xform_stack.pop();
 
@@ -521,6 +536,11 @@ int REDirect::rd_disk(float height, float radius, float theta)
 /// @param thetamax UNUSED.
 int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
 {
+    // Disable the vertex color and texture flags, and enable the normal flag
+    vertex_color_flag = false;
+    vertex_texture_flag = false;
+    vertex_normal_flag = true;
+
     // Number of latitudinal and longitudinal slices to draw
     int numLatitude = 10;
     int numLongitude = 12;
@@ -539,11 +559,21 @@ int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
             float phi = longitude * (2 * M_PI / numLongitude);
             float phiNext = (longitude + 1) * (2 * M_PI / numLongitude);
 
-            // Put each vertex into the polygon pipeline and draw it
-            render_poly(rd_pointa(radius * cosf(theta) * cosf(phi), radius * cosf(theta) * sinf(phi), radius * sinf(theta), 1), false); // bottom left
-            render_poly(rd_pointa(radius * cosf(thetaNext) * cosf(phi), radius * cosf(thetaNext) * sinf(phi), radius * sinf(thetaNext), 1), false); // top left
-            render_poly(rd_pointa(radius * cosf(thetaNext) * cosf(phiNext), radius * cosf(thetaNext) * sinf(phiNext), radius * sinf(thetaNext), 1), false); // top right
-            render_poly(rd_pointa(radius * cosf(theta) * cosf(phiNext), radius * cosf(theta) * sinf(phiNext), radius * sinf(theta), 1), true); // bottom right
+            // Create and pass in each point while calculating their normals
+            rd_pointa bottom_left = rd_pointa(radius * cosf(theta) * cosf(phi), radius * cosf(theta) * sinf(phi), radius * sinf(theta), 1);
+            bottom_left.set_normal(bottom_left.coord[0], bottom_left.coord[1], bottom_left.coord[2]); // Normals for a circle vertex are the same as the position vector
+            rd_pointa top_left = rd_pointa(radius * cosf(thetaNext) * cosf(phi), radius * cosf(thetaNext) * sinf(phi), radius * sinf(thetaNext), 1);
+            top_left.set_normal(top_left.coord[0], top_left.coord[1], top_left.coord[2]); // Normals for a circle vertex are the same as the position vector
+            rd_pointa top_right = rd_pointa(radius * cosf(thetaNext) * cosf(phiNext), radius * cosf(thetaNext) * sinf(phiNext), radius * sinf(thetaNext), 1);
+            top_right.set_normal(top_right.coord[0], top_right.coord[1], top_right.coord[2]); // Normals for a circle vertex are the same as the position vector
+            rd_pointa bottom_right = rd_pointa(radius * cosf(theta) * cosf(phiNext), radius * cosf(theta) * sinf(phiNext), radius * sinf(theta), 1);
+            bottom_right.set_normal(bottom_right.coord[0], bottom_right.coord[1], bottom_right.coord[2]); // Normals for a circle vertex are the same as the position vector
+
+            // Pass each vertex into the poly pipeline, drawing counter-clockwise looking from the outside
+            render_poly(bottom_left, false);
+            render_poly(top_left, false);
+            render_poly(top_right, false);
+            render_poly(bottom_right, true);
         }
     }
 
@@ -570,10 +600,15 @@ int REDirect::rd_background(const float color[])
 /// @param color A float* to an array of (currently) three values representing RGB.
 int REDirect::rd_color(const float color[])
 {
-    // Store the colors into our global variables
+    // Update our drawing color
     drawRed = color[0];
     drawGreen = color[1];
     drawBlue = color[2];
+
+    // Update our surface color global
+    surface_color[0] = color[0];
+    surface_color[1] = color[1];
+    surface_color[2] = color[2];
 
     return RD_OK;
 }
@@ -596,6 +631,132 @@ int REDirect::rd_fill(const float seed_point[3])
     flood_fill(seed_point, color);
 
     return RD_OK;
+}
+
+/// Sets the surface shader global variable based on the string passed in.
+int REDirect::rd_surface(const string &shader_type)
+{
+    if (shader_type == "metal")
+        shader = metal_shader;
+    else if (shader_type == "plastic")
+        shader = plastic_shader;
+    else // Default to using matte shader
+        shader = matte_shader;
+
+    return RD_OK;
+}
+
+/// Adds a point light to the scene with the specified position, color, and intensity.
+int REDirect::rd_point_light(const float pos[3], const float color[], float intensity)
+{
+    // Create the new point light object
+    point_light light;
+    light.position = rd_pointc(pos[0], pos[1], pos[2]);
+    light.redIntensity = color[0] * intensity;
+    light.greenIntensity = color[1] * intensity;
+    light.blueIntensity = color[2] * intensity;
+
+    // Add the light to the global array of point lights
+    point_lights[num_point_lights] = light;
+    num_point_lights++;
+    return RD_OK;
+}
+
+/// Adds a far light to the scene with the specified direction, color, and intensity.
+int REDirect::rd_far_light(const float dir[3], const float color[], float intensity)
+{
+    // Create the new far light object
+    far_light light;
+    light.direction = rd_vector(dir[0], dir[1], dir[2]);
+    light.redIntensity = color[0] * intensity;
+    light.greenIntensity = color[1] * intensity;
+    light.blueIntensity = color[2] * intensity;
+
+    // Add the light to the global array of far lights
+    far_lights[num_far_lights] = light;
+    num_far_lights++;
+    return RD_OK;
+}
+
+/// Creates an ambient light object and stores it into the global
+/// ambient light variable.
+int REDirect::rd_ambient_light(const float color[], float intensity)
+{
+    // Create the ambient light struct object
+    ambient_light light;
+    light.redIntensity = color[0] * intensity;
+    light.greenIntensity = color[1] * intensity;
+    light.blueIntensity = color[2] * intensity;
+
+    // Store the ambient light into the global variable
+    global_ambient_light = light;
+
+    return RD_OK;
+}
+
+/// Updates the global ambient coefficient.
+/// @param Ka The new ambient coefficient value.
+int REDirect::rd_k_ambient(float Ka)
+{
+    ambient_coefficient = Ka;
+    return RD_OK;
+}
+
+/// Updates the global diffuse coefficient.
+/// @param Kd The new diffuse coefficient value.
+int REDirect::rd_k_diffuse(float Kd)
+{
+    diffuse_coefficient = Kd;
+    return RD_OK;
+}
+
+/// Updates the global specular coefficient.
+/// @param Ks The new specular coefficient value.
+int REDirect::rd_k_specular(float Ks)
+{
+    specular_coefficient = Ks;
+    return RD_OK;
+}
+
+/// Updates the color passed in to reflect a matte surface shading.
+void REDirect::matte_shader(float *color)
+{
+    // Calculate the ambient color for each color channel
+    color[0] = ambient_coefficient * surface_color[0] * global_ambient_light.redIntensity;
+    color[1] = ambient_coefficient * surface_color[1] * global_ambient_light.greenIntensity;
+    color[2] = ambient_coefficient * surface_color[2] * global_ambient_light.blueIntensity;
+
+    // Calculate the diffuse for each far light
+    float far_red = 0, far_green = 0, far_blue = 0;
+    for (int index = 0; index < num_far_lights; index++)
+    {
+        // Create a rd_vector object for the surface normals of the object
+        rd_vector normal = rd_vector(surface_point_values.coord[ATTR_NX], surface_point_values.coord[ATTR_NY], surface_point_values.coord[ATTR_NZ]).normalized();
+
+        // Calculate our dot product then apply the intensity from each color channel to their respective sums
+        float dot = normal ^ far_lights[index].direction.normalized();
+        if (dot <= 0) continue; // Don't add a zero or sub-zero light
+        far_red += dot * far_lights[index].redIntensity;
+        far_green += dot * far_lights[index].greenIntensity;
+        far_blue += dot * far_lights[index].blueIntensity;
+    }
+
+    // Add the diffuse sums to each color channel
+    color[0] += far_red;
+    color[1] += far_green;
+    color[2] += far_blue;
+}
+
+///
+void REDirect::metal_shader(float *color)
+{
+
+}
+
+///
+void REDirect::plastic_shader(float *color)
+{
+
 }
 
 /// Plots eight points along the boundary of a circle given an x and y coordinate
@@ -954,7 +1115,27 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
     geometry[2] = point.coord[2];
     geometry[3] = point.coord[3];
     geometry = current_transform * geometry;
-    geometry = world_to_clip * geometry; // Run through world-
+
+    // Save the values into the attributed point's world coordinates
+    point.coord[ATTR_WORLD_X] = geometry[0];
+    point.coord[ATTR_WORLD_Y] = geometry[1];
+    point.coord[ATTR_WORLD_Z] = geometry[2];
+
+    // Convert the normal to world coordinates as well
+    normal[0] = point.coord[ATTR_NX];
+    normal[1] = point.coord[ATTR_NY];
+    normal[2] = point.coord[ATTR_NZ];
+    normal[3] = 1;
+    normal = normal_transform * normal; // TODO: make sure this is the right order
+
+    // Put the normal values back into the point in world coordinates
+    point.coord[ATTR_NX] = normal[0];
+    point.coord[ATTR_NY] = normal[1];
+    point.coord[ATTR_NZ] = normal[2];
+    point.coord[ATTR_CONSTANT] = 1;
+
+    // Convert the geometry to clipping coordinates
+    geometry = world_to_clip * geometry;
 
     // Put the transformed vertex back into the attributed point
     point.coord[0] = geometry[0];
@@ -983,7 +1164,7 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
             dev[0] = clipped_list[index].coord[0];
             dev[1] = clipped_list[index].coord[1];
             dev[2] = clipped_list[index].coord[2];
-            dev[3] = clipped_list[index].coord[3];
+            dev[3] = clipped_list[index].coord[3];\
             dev = clip_to_device * dev;
 
             // Put the X and Y back in as they're the only ones changed meaningfully
@@ -994,7 +1175,13 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
             clipped_list[index].coord[0] /= clipped_list[index].coord[3];
             clipped_list[index].coord[1] /= clipped_list[index].coord[3];
             clipped_list[index].coord[2] /= clipped_list[index].coord[3];
+
+            // Normalize from the constant onwards
+            for (int i = 4; i < ATTR_SIZE; i++)
+                clipped_list[index].coord[i] /= clipped_list[index].coord[3];
         }
+
+        // TODO: Convert the global polygon normal to world coordinates
 
         // Pass the clipped geometry into the scan conversion function
         draw_poly(num_vertex, clipped_list);
@@ -1097,7 +1284,7 @@ void REDirect::make_edge_record(rd_pointa lower, rd_pointa upper)
     edge->point = lower + (factor * edge->increment);
 
     // Find the last scanline for the edge and insert it into the edge table list
-    edge->yLast = ceil(upper.coord[1]) - 1;
+    edge->yLast = (ceilf(upper.coord[1]) - 1);
     insert_edge(&edge_table[(int)ceilf(lower.coord[1])], edge);
 }
 
@@ -1231,9 +1418,21 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
             // While not at the end x, plot each pixel along the way
             while (value.coord[0] < end_x)
             {
-                //float color[3] = { value.coord[ATTR_R], value.coord[ATTR_G], value.coord[ATTR_B] };
+                // Store the values into surface_point_values and divide by the constant
+                surface_point_values = value;
+                for (int index = 5; index < ATTR_SIZE; index++)
+                    surface_point_values.coord[index] /= surface_point_values.coord[ATTR_CONSTANT];
+
+                // If the shader is nullptr, default to matte
+                if (shader == nullptr)
+                    shader = matte_shader;
+
+                // Get the color from the current shader
+                float* color = new float[3];
+                shader(color);
+
                 rd_pointc point(value.coord[0], scanline, value.coord[2]);
-                plot_pixel(point);
+                plot_pixel(point, color);
 
                 // Increment the values
                 value = value + increment;
@@ -1433,4 +1632,31 @@ rd_pointa REDirect::boundary_intersection(rd_pointa v1, rd_pointa v2, int bounda
         interpolated.coord[index] = v1.coord[index] + alpha * (v2.coord[index] - v1.coord[index]);
 
     return interpolated;
+}
+
+/// Checks for certain special options and toggles them on
+/// or off based on the flag passed in as a parameter.
+/// @param name A const string reference with the name of the option to change.
+/// @param flag The value to set the option to, true or false.
+int REDirect::rd_option_bool(const string &name, bool flag)
+{
+    if (name == "Interpolate") // Update the global interpolation flag
+        interpolation_flag = flag;
+
+    return RD_OK;
+}
+
+/// Clamps the value within the range.
+/// @param val The value to clamp.
+/// @param min The lowest value allowed for val.
+/// @param max The highest value allowed for val.
+/// @returns val within the specified range.
+float REDirect::clamp(float val, float min, float max)
+{
+    // Return min or max if val is outside of their range
+    if (val < min) return min;
+    if (val > max) return max;
+
+    // Otherwise return val as is
+    return val;
 }

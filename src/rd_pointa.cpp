@@ -32,6 +32,14 @@ rd_pointa::rd_pointa(float x, float y, float z, float w)
         coord[index] = 0;
 }
 
+/// Copy constructor that returns a new point with the
+/// same values as the current point.
+rd_pointa::rd_pointa(const rd_pointa &point)
+{
+    for (int index = 0; index < ATTR_SIZE; index++)
+        coord[index] = point.coord[index];
+}
+
 /// @returns This attributed point with all values in coord
 ///     increased by the values in point.coord.
 rd_pointa rd_pointa::operator+(rd_pointa point)
@@ -75,4 +83,16 @@ rd_pointa operator*(float factor, const rd_pointa& point)
         result.coord[index] = point.coord[index] * factor;
 
     return result;
+}
+
+/// Utility function to more easily enter the normal vector values
+/// into the attributed point.
+/// @param nx The normal x-direction.
+/// @param ny The normal y-direction.
+/// @param nz The normal z-direction.
+void rd_pointa::set_normal(float nx, float ny, float nz)
+{
+    coord[ATTR_NX] = nx;
+    coord[ATTR_NY] = ny;
+    coord[ATTR_NZ] = nz;
 }
