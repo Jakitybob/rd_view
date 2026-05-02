@@ -22,6 +22,7 @@ public:
     rd_pointc(float x, float y, float z);
     rd_pointc(const float* point); // Using float array
     rd_pointc(class rd_pointh point); // Homogenous to cartesian
+    rd_pointc(class rd_pointa point); // Attributed to cartesian
 
     // Operator overloads
     class rd_vector operator- (rd_pointc point);

@@ -40,8 +40,8 @@ static rd_xform world_to_clip;
 static rd_xform clip_to_device;
 
 // Camera information
-static rd_pointc camera_eye = rd_pointc(0, 0, 0);
-static rd_pointc camera_at = rd_pointc(0, 0, -1);
+static rd_pointc camera_eye = rd_pointc(0, 0, 0); // Where the camera is located physically
+static rd_pointc camera_at = rd_pointc(0, 0, -1); // Where the camera is looking towards
 static rd_pointc camera_up = rd_pointc(0, 1, 0);
 static float camera_fov = 90.f;
 static float near_clip = 1.0f;
@@ -65,12 +65,13 @@ static int num_point_lights = 0;
 static float ambient_coefficient = 1.f, diffuse_coefficient = 0.f, specular_coefficient = 0.f;
 static float surface_color[3] = {1.f, 1.f, 1.f}; // Default to white
 static float specular_color[3] = {1.f, 1.f, 1.f}; // Default to white
-static float specular_exponent = 10.f;
+static int specular_exponent = 10;
 static bool vertex_color_flag = false, vertex_normal_flag = false, vertex_texture_flag = false, interpolation_flag = true;
 static rd_vector viewing_vector; // Direction from a surface point to the eye of the camera for a given polygon
 static rd_vector poly_normal; // Surface normal for a given polygon, may or may not be used
 static rd_pointa surface_point_values;
 static void (*shader)(float*) = nullptr; // Function pointer for the shaders
+static bool use_surface_flag = false; // Whether specular should use surface color or specular color (true for metallic, false for plastic)
 
 // Global variable for frame number
 static int frame_number = 0;

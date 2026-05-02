@@ -35,6 +35,7 @@ public:
     rd_pointa();
     rd_pointa(float x, float y, float z, float w);
     rd_pointa(const rd_pointa& point);
+    rd_pointa(const class rd_pointc& point);
 
     // Operator Overloads
     rd_pointa operator+ (rd_pointa point);

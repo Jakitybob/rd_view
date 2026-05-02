@@ -11,6 +11,7 @@ Purpose: This class implements a row major 4x4 matrix used in RDView for transfo
 
 #include "rd_xform.h"
 #include "rd_pointh.h"
+#include "rd_vector.h"
 #include <cmath>
 #include <iostream>
 
@@ -61,7 +62,7 @@ rd_xform rd_xform::operator*(rd_xform m2)
     return return_matrix;
 }
 
-/// @param point The homogenous point to multiply into this translation matrix.
+/// @param point The homogenous point to multiply into this transformation matrix.
 rd_pointh rd_xform::operator*(rd_pointh point)
 {
     // Create our homogenous point to return
@@ -83,6 +84,57 @@ rd_pointh rd_xform::operator*(rd_pointh point)
 
     // Return our new point
     return return_point;
+}
+
+/// @param vector The vector to cross-multiply with this transformation matrix.
+/// @returns The cross-multiplied vector.
+rd_vector rd_xform::operator*(rd_vector vector)
+{
+    // Create the vector to update and return
+    rd_vector return_vector;
+
+    // Step through each row in the matrix
+    for (int rows = 0; rows < 3; rows++)
+    {
+        // Store the sum of the row x column mult
+        float sum = 0;
+
+        // Step through each column and add each value to the sum
+        for (int index = 0; index < 3; index++)
+            sum += matrix[rows][index] * vector[index];
+
+        // Set the value in our return vector
+        return_vector[rows] = sum;
+    }
+
+    // Return our new vector
+    return return_vector;
+}
+
+/// Implements cross multiplication where the vector is on the
+/// left hand side and the matrix is on the right, used
+/// mostly for the normal transform.
+rd_vector operator*(rd_vector vector, const rd_xform &matrix)
+{
+    // Create the vector to update and return
+    rd_vector return_vector;
+
+    // Step through each row in the matrix
+    for (int rows = 0; rows < 3; rows++)
+    {
+        // Store the sum of the row x column mult
+        float sum = 0;
+
+        // Step through each column and add each value to the sum
+        for (int index = 0; index < 3; index++)
+            sum += matrix.matrix[index][rows] * vector[index];
+
+        // Set the value in our return vector
+        return_vector[rows] = sum;
+    }
+
+    // Flip to return it to column vector
+    return return_vector.flipped_vector();
 }
 
 /// @param m2 The matrix whose data is being copied into this one.
@@ -146,6 +198,21 @@ void rd_xform::set_xy_rotation(float angle)
     matrix[1][1] = cosf(radians); // row 2 col 2
 }
 
+void rd_xform::set_xy_inverse(float angle)
+{
+    // Reset the matrix
+    set_identity();
+
+    // Convert from degrees to radians
+    float radians = angle * (M_PI/180);
+
+    // Set up the matrix for rotation about Z
+    matrix[0][0] = cosf(radians); // row 1 col 1
+    matrix[0][1] = sinf(radians); // row 1 col 2
+    matrix[1][0] = -sinf(radians); // row 2 col 1
+    matrix[1][1] = cosf(radians); // row 2 col 2
+}
+
 /// Sets the matrix to be a rotation matrix about the X-axis (Y towards Z).
 /// @param angle The angle in degrees to rotate by.
 void rd_xform::set_yz_rotation(float angle)
@@ -163,6 +230,21 @@ void rd_xform::set_yz_rotation(float angle)
     matrix[2][2] = cosf(radians);
 }
 
+void rd_xform::set_yz_inverse(float angle)
+{
+    // Reset the matrix
+    set_identity();
+
+    // Convert from degrees to radians
+    float radians = angle * (M_PI/180);
+
+    // Set up the matrix for rotation about X
+    matrix[1][1] = cosf(radians);
+    matrix[1][2] = sinf(radians);
+    matrix[2][1] = -sinf(radians);
+    matrix[2][2] = cosf(radians);
+}
+
 /// Sets the matrix to be a rotation matrix about the Y-axis (Z towards X).
 /// @param angle The angle in degrees to rotate by.
 void rd_xform::set_zx_rotation(float angle)
@@ -177,6 +259,21 @@ void rd_xform::set_zx_rotation(float angle)
     matrix[0][0] = cosf(radians);
     matrix[0][2] = sinf(radians);
     matrix[2][0] = -sinf(radians);
+    matrix[2][2] = cosf(radians);
+}
+
+void rd_xform::set_zx_inverse(float angle)
+{
+    // Reset the matrix
+    set_identity();
+
+    // Convert from degrees to radians
+    float radians = angle * (M_PI/180);
+
+    // Set up the matrix for rotation about Y
+    matrix[0][0] = cosf(radians);
+    matrix[0][2] = -sinf(radians);
+    matrix[2][0] = sinf(radians);
     matrix[2][2] = cosf(radians);
 }
 

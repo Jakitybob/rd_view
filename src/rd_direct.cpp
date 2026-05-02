@@ -73,6 +73,12 @@ int REDirect::rd_world_begin()
     if (edge_table == nullptr)
         edge_table = new rd_edge[display_ySize];
 
+    // Default to using the matte shader for all rendering
+    shader = matte_shader;
+
+    // Create a default white ambient light
+    rd_ambient_light(new float[3] {1.0, 1.0, 1.0}, 1.0);
+
     // Initialize the frame and return OK
     rd_disp_init_frame(frame_number);
     return RD_OK;
@@ -90,6 +96,11 @@ int REDirect::rd_frame_begin(int frame_no)
 {
     // Store the frame number globally for use elsewhere
     frame_number = frame_no;
+
+    // Reset lighting information
+    rd_ambient_light(new float[3] {1.0, 1.0, 1.0}, 1.0);
+    num_far_lights = 0;
+    num_point_lights = 0;
 
     return RD_OK;
 }
@@ -218,8 +229,11 @@ int REDirect::rd_rotate_xy(float angle)
     rd_xform rotation;
     rotation.set_xy_rotation(angle);
 
-    // Multiply both of our transform matrices by this rotation
+    // Add the rotation to our current transform
     current_transform = current_transform * rotation;
+
+    // Add the inverse of our rotation to the normal transform
+    rotation.set_xy_inverse(angle);
     normal_transform = rotation * normal_transform;
 
     return RD_OK;
@@ -234,8 +248,11 @@ int REDirect::rd_rotate_yz(float angle)
     rd_xform rotation;
     rotation.set_yz_rotation(angle);
 
-    // Multiply both of our transform matrices by this rotation
+    // Add the rotation to our current transform
     current_transform = current_transform * rotation;
+
+    // Add the inverse of our rotation to the normal transform
+    rotation.set_yz_inverse(angle);
     normal_transform = rotation * normal_transform;
 
     return RD_OK;
@@ -250,8 +267,11 @@ int REDirect::rd_rotate_zx(float angle)
     rd_xform rotation;
     rotation.set_zx_rotation(angle);
 
-    // Multiply both of our transform matrices by this rotation
+    // Add the rotation to our current transform
     current_transform = current_transform * rotation;
+
+    // Add the inverse of our rotation to the normal transform
+    rotation.set_zx_inverse(angle);
     normal_transform = rotation * normal_transform;
 
     return RD_OK;
@@ -380,17 +400,35 @@ int REDirect::rd_pointset(const string &vertex_type, int nvertex, const vector<f
 /// @param face
 int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<float> &vertex, int nface, const vector<int> &face)
 {
+    // Turn off vertex normals as we don't make them here
+    vertex_normal_flag = false;
+
+    // Track three consecutive vertices for poly_normal calculation
+    int num_vertices = 0;
+    rd_pointc consecutive_vertex[3];
+
     // Loop through each face to draw each line in the connected set.
     for (int index = 0; index < face.size(); index++)
     {
         // Create the attributed point for this vertex
         rd_pointa point(vertex[0 + face[index] * 3], vertex[1 + face[index] * 3], vertex[2 + face[index] * 3], 1);
 
+        // If we don't have three consecutive vertices, add this as one of them
+        if (num_vertices < 3)
+        {
+            consecutive_vertex[num_vertices] = rd_pointc(point);
+            num_vertices++;
+        }
+
         // If the vertex number is -1, pass the last vertex in and draw
         if (face[index + 1] == -1)
         {
+            // Use the three vertices we saved to calculate the poly normal
+            poly_normal = ((consecutive_vertex[1] - consecutive_vertex[0]) * (consecutive_vertex[2] - consecutive_vertex[0])).normalized();
+
             render_poly(point, true);
             index++; // Double increment
+            num_vertices = 0; // Reset our vertex count
             continue;
         }
 
@@ -408,22 +446,34 @@ int REDirect::rd_polyset(const string &vertex_type, int nvertex, const vector<fl
 /// @param thetamax UNUSED.
 int REDirect::rd_cone(float height, float radius, float thetamax)
 {
+    // Enable our vertex normals
+    vertex_normal_flag = true;
+
     // Create our angle to use while creating segments
     float angle = 0; // In radians
 
     // Draw each segment's face along the edge of the circle at the base
     for (int index = 1; index <= NUM_SEGMENTS; index++)
     {
-        // Put the first part of the base into the pipeline
-        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), 0, 1), false);
+        // Create the first vertex at our current angle
+        rd_pointa v1 = {radius * cosf(angle), radius * sinf(angle), 0, 1};
+        v1.set_normal(v1.coord[0], v1.coord[1], radius / height);
 
         // Update the angle to the next step and add the other side of the base
         angle = index * 2 * M_PI/NUM_SEGMENTS;
-        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), 0, 1), false);
+        rd_pointa v2 = {radius * cosf(angle), radius * sinf(angle), 0, 1};
+        v2.set_normal(v2.coord[0], v2.coord[1], radius / height);
 
-        // Put two vertices at the top (two for lighting purposes!)
-        render_poly(rd_pointa(0, 0, height, 1), false);
-        render_poly(rd_pointa(0, 0, height, 1), true);
+        // Create the vertex at the top and calculate the poly normal
+        rd_pointa v3 = {0, 0, height, 1};
+        v3.set_normal(0, 0, 1);
+        poly_normal = ((rd_pointc(v2) - rd_pointc(v1)) * (rd_pointc(v3) - rd_pointc(v1))).normalized();
+
+        // Pass the three points into the poly pipeline, passing in v3 twice for four total vertices
+        render_poly(v1, false);
+        render_poly(v2, false);
+        render_poly(v3, false);
+        render_poly(v3, true);
     }
 
     return RD_OK;
@@ -434,41 +484,68 @@ int REDirect::rd_cone(float height, float radius, float thetamax)
 /// transformed and sent through the world -> device pipeline.
 int REDirect::rd_cube()
 {
-    // Draw the bottom face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), true);
+    // Turn off our vertex normals
+    vertex_normal_flag = false;
 
-    // Draw the back face of the cube
-    render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, 1, -1, 1), false);
-    render_poly(rd_pointa(1, 1, -1, 1), true);
+    // Create the points for the bottom face of the cube
+    rd_pointa v1 = {-1, -1, 1, 1};
+    rd_pointa v2 = {-1, -1, -1, 1};
+    rd_pointa v3 = {1, -1, -1, 1};
+    rd_pointa v4 = {1, -1, 1, 1};
+    poly_normal = {0, -1, 0};
 
-    // Draw the right face of the cube
-    render_poly(rd_pointa(1, -1, -1, 1), false);
-    render_poly(rd_pointa(1, 1, -1, 1), false);
-    render_poly(rd_pointa(1, 1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), true);
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
 
-    // Draw the front face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, -1, 1, 1), false);
-    render_poly(rd_pointa(1, 1, 1, 1), false);
-    render_poly(rd_pointa(-1, 1, 1, 1), true);
+    // Create the points for the back face of the cube
+    v1 = {1, -1, -1, 1};
+    v2 = {-1, -1, -1, 1};
+    v3 = {-1, 1, -1, 1};
+    v4 = {1, 1, -1, 1};
+    poly_normal = {0, 0, -1};
 
-    // Draw the left face of the cube
-    render_poly(rd_pointa(-1, -1, 1, 1), false);
-    render_poly(rd_pointa(-1, -1, -1, 1), false);
-    render_poly(rd_pointa(-1, 1, -1, 1), false);
-    render_poly(rd_pointa(-1, 1, 1, 1), true);
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
 
-    // Draw the top face of the cube
-    render_poly(rd_pointa(1, 1, -1, 1), false);
-    render_poly(rd_pointa(1, 1, 1, 1), false);
-    render_poly(rd_pointa(-1, 1, 1, 1), false);
-    render_poly(rd_pointa(-1, 1, -1, 1), true);
+    // Create the points for the right face of the cube
+    v1 = {1, -1, -1, 1};
+    v2 = {1, 1, -1, 1};
+    v3 = {1, 1, 1, 1};
+    v4 = {1, -1, 1, 1};
+    poly_normal = {1, 0, 0};
+
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
+
+    // Create the points for the front face of the cube
+    v1 = {-1, -1, 1, 1};
+    v2 = {-1, 1, 1, 1};
+    v3 = {1, 1, 1, 1};
+    v4 = {1, -1, 1, 1};
+    poly_normal = {0, 0, 1};
+
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
+
+    // Create the points for the left face of the cube
+    v1 = {-1, -1, 1, 1};
+    v2 = {-1, -1, -1, 1};
+    v3 = {-1, 1, -1, 1};
+    v4 = {-1, 1, 1, 1};
+    poly_normal = {-1, 0, 0};
+
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
+
+    // Create the points for the top face of the cube
+    v1 = {-1, 1, -1, 1};
+    v2 = { 1, 1, -1, 1};
+    v3 = { 1, 1,  1, 1};
+    v4 = {-1, 1,  1, 1};
+    poly_normal = {0, 1, 0};
+
+    // Pass the face into the polygon pipeline
+    draw_face(v1, v2, v3, v4);
 
     return RD_OK;
 }
@@ -480,6 +557,9 @@ int REDirect::rd_cube()
 /// @param thetamax UNUSED.
 int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
 {
+    // Turn on the vertex normal flag
+    vertex_normal_flag = true;
+
     // Create our angle to use while creating segments
     float angle = 0; // In radians
 
@@ -489,11 +569,24 @@ int REDirect::rd_cylinder(float radius, float zmin, float zmax, float thetamax)
         float last_angle = angle;
         angle = index * 2 * M_PI/NUM_SEGMENTS; // Move angle to the next step
 
-        // Put each point in the pipeline and draw the polygon
-        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), zmin, 1), false);
-        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), zmin, 1), false);
-        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), zmax, 1), false);
-        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), zmax, 1), true);
+        // Create each point for the current face of the polygon
+        rd_pointa v1 = {radius * cosf(last_angle), radius * sinf(last_angle), zmin, 1};
+        v1.set_normal(v1.coord[0] / radius, v1.coord[1] / radius, 0);
+        rd_pointa v2 = {radius * cosf(angle), radius * sinf(angle), zmin, 1};
+        v2.set_normal(v2.coord[0] / radius, v2.coord[1] / radius, 0);
+        rd_pointa v3 = {radius * cosf(angle), radius * sinf(angle), zmax, 1};
+        v3.set_normal(v3.coord[0] / radius, v3.coord[1] / radius, 0);
+        rd_pointa v4 = {radius * cosf(last_angle), radius * sinf(last_angle), zmax, 1};
+        v4.set_normal(v4.coord[0] / radius, v4.coord[1] / radius, 0);
+
+        // Calculate the poly normal using three points
+        poly_normal = ((rd_pointc(v2) - rd_pointc(v1)) * (rd_pointc(v3) - rd_pointc(v1))).normalized();
+
+        // Pass each point into the poly pipeline for rendering
+        render_poly(v1, false);
+        render_poly(v2, false);
+        render_poly(v3, false);
+        render_poly(v4, true);
     }
 
     return RD_OK;
@@ -515,13 +608,22 @@ int REDirect::rd_disk(float height, float radius, float theta)
         float last_angle = angle;
         angle = index * 2 * M_PI/NUM_SEGMENTS;
 
-        // Pass the edge points into the poly pipeline
-        render_poly(rd_pointa(radius * cosf(angle), radius * sinf(angle), height, 1),false);
-        render_poly(rd_pointa(radius * cosf(last_angle), radius * sinf(last_angle), height, 1),false);
+        // Create the three (but last is used twice) points for the disk
+        rd_pointa v1 = {radius * cosf(angle), radius * sinf(angle), height, 1};
+        v1.set_normal(0, 0, 1);
+        rd_pointa v2 = {radius * cosf(last_angle), radius * sinf(last_angle), height, 1};
+        v2.set_normal(0, 0, 1);
+        rd_pointa v3 = {0, 0, height, 1};
+        v3.set_normal(0, 0, 1);
 
-        // Pass two vertices in the center of the disk (for normal generation)
-        render_poly(rd_pointa(0, 0, height, 1), false);
-        render_poly(rd_pointa(0, 0, height, 1), true);
+        // Calculate the poly normal
+        poly_normal = ((rd_pointc(v2) - rd_pointc(v1)) * (rd_pointc(v3) - rd_pointc(v1))).normalized();
+
+        // Pass the three vertices into the poly pipeline, rendering v3 twice for a "cone" shape of the poly
+        render_poly(v1, false);
+        render_poly(v2, false);
+        render_poly(v3, false);
+        render_poly(v3, true);
     }
 
     return RD_OK;
@@ -543,7 +645,7 @@ int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
 
     // Number of latitudinal and longitudinal slices to draw
     int numLatitude = 10;
-    int numLongitude = 12;
+    int numLongitude = 20;
 
     // Loop through the latitudinal slices
     for (int latitude = 0; latitude < numLatitude; latitude++)
@@ -573,6 +675,20 @@ int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
             render_poly(bottom_left, false);
             render_poly(top_left, false);
             render_poly(top_right, false);
+
+            // Hold three cartesian coordinates for our vertices
+            rd_pointc v1 = rd_pointc(bottom_left.coord[0], bottom_left.coord[1], bottom_left.coord[2]);
+            rd_pointc v2 = rd_pointc(top_left.coord[0], top_left.coord[1], top_left.coord[2]);
+            rd_pointc v3 = rd_pointc(top_right.coord[0], top_right.coord[1], top_right.coord[2]);
+
+            // If we're at the top of the sphere, use bottom_right for v3 instead
+            if (latitude == numLatitude - 1)
+                v3 = rd_pointc(bottom_right.coord[0], bottom_right.coord[1], bottom_right.coord[2]);
+
+            // Calculate the polygon normal using these three vertices
+            poly_normal = ((v2 - v1) * (v3 - v1)).normalized();
+
+            // Pass our last vertex in and draw our polygon
             render_poly(bottom_right, true);
         }
     }
@@ -694,6 +810,19 @@ int REDirect::rd_ambient_light(const float color[], float intensity)
     return RD_OK;
 }
 
+/// Sets the specular color and specular exponent.
+/// @param color An array of three floats with the RGB values to set specular color to.
+/// @param exponent The new specular expontent.
+int REDirect::rd_specular_color(const float color[], int exponent)
+{
+    // Update all the global values
+    specular_color[0] = color[0];
+    specular_color[1] = color[1];
+    specular_color[2] = color[2];
+    specular_exponent = exponent;
+    return RD_OK;
+}
+
 /// Updates the global ambient coefficient.
 /// @param Ka The new ambient coefficient value.
 int REDirect::rd_k_ambient(float Ka)
@@ -718,49 +847,213 @@ int REDirect::rd_k_specular(float Ks)
     return RD_OK;
 }
 
+/// Calculates the ambient color, dependent on the flags.
+/// The calculated color is passed out into the color parameter.
+void REDirect::calculate_ambient(float *color)
+{
+    // Create a variable for calculating the color, defaulted to using the surface color
+    float calc_color[3] = {surface_color[0], surface_color[1], surface_color[2]};
+
+    // If interpolation and vertex_color are on, use that instead of the surface_color
+    if (interpolation_flag && vertex_color_flag)
+    {
+        calc_color[0] = surface_point_values.coord[ATTR_R];
+        calc_color[1] = surface_point_values.coord[ATTR_G];
+        calc_color[2] = surface_point_values.coord[ATTR_B];
+    }
+
+    // Calculate the color using the ambient coefficient and current ambient light
+    color[0] = ambient_coefficient * calc_color[0] * global_ambient_light.redIntensity;
+    color[1] = ambient_coefficient * calc_color[1] * global_ambient_light.greenIntensity;
+    color[2] = ambient_coefficient * calc_color[2] * global_ambient_light.blueIntensity;
+}
+
+/// Calculates the diffuse color, dependent on the current flags.
+/// The calculated color is passed out into the color parameter.
+void REDirect::calculate_diffuse(float *color)
+{
+    // Create a variable for calculating the color, defaulted to using the surface color
+    float calc_color[3] = {surface_color[0], surface_color[1], surface_color[2]};
+
+    // If interpolation and vertex_color are on, use that instead of the surface_color
+    if (interpolation_flag && vertex_color_flag)
+    {
+        calc_color[0] = surface_point_values.coord[ATTR_R];
+        calc_color[1] = surface_point_values.coord[ATTR_G];
+        calc_color[2] = surface_point_values.coord[ATTR_B];
+    }
+
+    // Create values for each channel's diffuse sum and to hold the object normal
+    float red = 0, green = 0, blue = 0;
+    rd_vector normal;
+
+    // If we should interpolate and use vertex normals, store those
+    if (interpolation_flag && vertex_normal_flag)
+        normal = rd_vector(surface_point_values.coord[ATTR_NX], surface_point_values.coord[ATTR_NY], surface_point_values.coord[ATTR_NZ]).normalized();
+    else // Otherwise use the global poly normal
+        normal = poly_normal.normalized();
+
+    // Calculate the diffuse for each far light first
+    for (int index = 0; index < num_far_lights; index++)
+    {
+        // Calculate the dot product then apply the intensity from each color channel
+        float dot = normal ^ far_lights[index].direction.normalized();
+        if (dot <= 0) continue; // Skip any lights that aren't shining onto our object
+        red += dot * far_lights[index].redIntensity;
+        green += dot * far_lights[index].greenIntensity;
+        blue += dot * far_lights[index].blueIntensity;
+    }
+
+    // Calculate the diffuse for each point light next
+    for (int index = 0; index < num_point_lights; index++)
+    {
+        // Calculate the light direction for the point light
+        rd_vector light_vector = point_lights[index].position - rd_pointc(
+            surface_point_values.coord[ATTR_WORLD_X], surface_point_values.coord[ATTR_WORLD_Y], surface_point_values.coord[ATTR_WORLD_Z]);
+
+        // Calculate the intensity falloff
+        float fallOff = 1 / (powf(light_vector.magnitude(), 2));
+        float redIntensity = point_lights[index].redIntensity * fallOff;
+        float greenIntensity = point_lights[index].greenIntensity * fallOff;
+        float blueIntensity = point_lights[index].blueIntensity * fallOff;
+
+        // Calculate the dot product then apply the intensity from each color channel
+        float dot = normal ^ light_vector.normalized();
+        if (dot <= 0) continue;
+        red += dot * redIntensity;
+        green += dot * greenIntensity;
+        blue += dot * blueIntensity;
+    }
+
+    // Multiply each channel by the coefficient and surface color
+    red *= diffuse_coefficient * calc_color[0];
+    green *= diffuse_coefficient * calc_color[1];
+    blue *= diffuse_coefficient * calc_color[2];
+
+    // Add our diffuse to the out color and clamp each channel between 0 and 1
+    color[0] = clamp(color[0] + red, 0, 1);
+    color[1] = clamp(color[1] + green, 0, 1);
+    color[2] = clamp(color[2] + blue, 0, 1);
+}
+
+/// Calculates the specular contribution of the color passed in
+/// using its world position from surface_values to sum over each
+/// light in the scene to calculate the final specular contribution
+/// at the current pixel.
+void REDirect::calculate_specular(float *color)
+{
+    // Create a variable for calculating the color, defaulted to using the specular colors
+    float calc_color[3] = {specular_color[0], specular_color[1], specular_color[2]};
+
+    // If the use_surface flag is on, use that instead of the specular color
+    if (use_surface_flag)
+    {
+        calc_color[0] = surface_color[0];
+        calc_color[1] = surface_color[1];
+        calc_color[2] = surface_color[2];
+    }
+
+    // Create values for each channel's specular sum
+    float red = 0, green = 0, blue = 0;
+
+    // Store our normal for this vector
+    rd_vector normal;
+    if (interpolation_flag && vertex_normal_flag)
+        normal = rd_vector(surface_point_values.coord[ATTR_NX], surface_point_values.coord[ATTR_NY], surface_point_values.coord[ATTR_NZ]).normalized();
+    else // Otherwise use the global poly normals
+        normal = poly_normal.normalized();
+
+    // Calculate the view vector for the surface
+    rd_vector view = (camera_eye - rd_pointc(surface_point_values.coord[ATTR_WORLD_X], surface_point_values.coord[ATTR_WORLD_Y], surface_point_values.coord[ATTR_WORLD_Z])).normalized();
+
+    // If view dot normal is <= 0, it's the back of the poly and we wouldn't see reflected light
+    if ((view ^ normal) <= 0) return;
+
+    // Calculate the specular for each far light
+    for (int index = 0; index < num_far_lights; index++)
+    {
+        // Calculate the direction of the light and the reflected vector of the light
+        rd_vector light = far_lights[index].direction.normalized();
+        rd_vector reflected = rd_vector::reflect(light, normal).normalized();
+
+        // Only apply specular to the front of faces, not the back
+        if ((normal ^ light) <= 0) continue;
+
+        // Calculate the dot product and intensity for each color channel
+        float dot = view ^ reflected;
+        if (dot <= 0) continue; // Skip any lights that aren't shining on our surface
+        dot = powf(dot, specular_exponent); // Apply our shininess
+
+        red += specular_coefficient * calc_color[0] * far_lights[index].redIntensity * dot;
+        green += specular_coefficient * calc_color[1] * far_lights[index].greenIntensity * dot;
+        blue += specular_coefficient * calc_color[2] * far_lights[index].blueIntensity * dot;
+    }
+
+    // Calculate the specular for each point light next
+    for (int index = 0; index < num_point_lights; index++)
+    {
+        // Calculate the light direction and reflection vector for the point light
+        rd_vector light_vector = point_lights[index].position - rd_pointc(
+            surface_point_values.coord[ATTR_WORLD_X], surface_point_values.coord[ATTR_WORLD_Y], surface_point_values.coord[ATTR_WORLD_Z]);
+        rd_vector reflected = rd_vector::reflect(light_vector, normal).normalized();
+
+        // Make sure we're on the front of a polygon and not the back
+        if ((normal ^ light_vector) <= 0) continue;
+
+        // Calculate the intensity falloff
+        float fallOff = 1 / (powf(light_vector.magnitude(), 2));
+        float redIntensity = point_lights[index].redIntensity * fallOff;
+        float greenIntensity = point_lights[index].greenIntensity * fallOff;
+        float blueIntensity = point_lights[index].blueIntensity * fallOff;
+
+        // Calculate the dot product for our summation
+        float dot = view ^ reflected;
+        if (dot <= 0) continue; // Skip any lights that aren't shining on the surface
+        dot = powf(dot, specular_exponent);
+
+        // Apply the intensity from each color to the summation
+        red += specular_coefficient * calc_color[0] * redIntensity * dot;
+        green += specular_coefficient * calc_color[1] * greenIntensity * dot;
+        blue += specular_coefficient * calc_color[2] * blueIntensity * dot;
+    }
+
+    // Add our specular to the out color and clamp between 0 and 1
+    color[0] = clamp(color[0] + red, 0, 1);
+    color[1] = clamp(color[1] + green, 0, 1);
+    color[2] = clamp(color[2] + blue, 0, 1);
+}
+
 /// Updates the color passed in to reflect a matte surface shading.
 void REDirect::matte_shader(float *color)
 {
-    // Calculate the ambient color for each color channel
-    color[0] = ambient_coefficient * surface_color[0] * global_ambient_light.redIntensity;
-    color[1] = ambient_coefficient * surface_color[1] * global_ambient_light.greenIntensity;
-    color[2] = ambient_coefficient * surface_color[2] * global_ambient_light.blueIntensity;
-
-    // Calculate the diffuse for each far light
-    float far_red = 0, far_green = 0, far_blue = 0;
-    for (int index = 0; index < num_far_lights; index++)
-    {
-        // Create a rd_vector object for the surface normals of the object
-        rd_vector normal = rd_vector(surface_point_values.coord[ATTR_NX], surface_point_values.coord[ATTR_NY], surface_point_values.coord[ATTR_NZ]).normalized();
-
-        // Calculate our dot product then apply the intensity from each color channel to their respective sums
-        float dot = normal ^ far_lights[index].direction.normalized();
-        if (dot <= 0) continue; // Don't add a zero or sub-zero light
-        far_red += dot * far_lights[index].redIntensity;
-        far_green += dot * far_lights[index].greenIntensity;
-        far_blue += dot * far_lights[index].blueIntensity;
-    }
-
-    // Add the diffuse sums to each color channel
-    color[0] += far_red;
-    color[1] += far_green;
-    color[2] += far_blue;
-
-    color[0] = clamp(color[0], 0.0, 1.0);
-    color[1] = clamp(color[1], 0.0, 1.0);
-    color[2] = clamp(color[2], 0.0, 1.0);
+    // Calculate the ambient and diffuse (no specular)
+    calculate_ambient(color);
+    calculate_diffuse(color);
 }
 
-///
+/// Updates the color passed in to reflect a metal surface shading.
 void REDirect::metal_shader(float *color)
 {
+    // Make sure to use the surface color for the metallic look
+    use_surface_flag = true;
 
+    // Calculate the ambient and specular (no diffuse)
+    calculate_ambient(color);
+    calculate_specular(color);
 }
 
-///
+/// Updates the color passed in to reflect a more plastic
+/// style of surface shading. The outcome is heavily
+/// dependent on global values though.
 void REDirect::plastic_shader(float *color)
 {
+    // Don't use surface color, not metallic here
+    use_surface_flag = false;
 
+    // Calculate all three values
+    calculate_ambient(color);
+    calculate_diffuse(color);
+    calculate_specular(color);
 }
 
 /// Plots eight points along the boundary of a circle given an x and y coordinate
@@ -1105,7 +1398,8 @@ void REDirect::plot_line(rd_pointh point)
 int REDirect::render_poly(rd_pointa point, bool should_draw)
 {
     // Variables for working with points easier
-    rd_pointh geometry, normal, dev;
+    rd_pointh geometry, dev;
+    rd_vector normal;
 
     // Set up some static variables for keeping track of current vertices
     const int MAX_VERTEX_LIST_SIZE = 50;
@@ -1129,8 +1423,7 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
     normal[0] = point.coord[ATTR_NX];
     normal[1] = point.coord[ATTR_NY];
     normal[2] = point.coord[ATTR_NZ];
-    normal[3] = 1;
-    normal = normal_transform * normal; // TODO: make sure this is the right order
+    normal = normal * normal_transform;
 
     // Put the normal values back into the point in world coordinates
     point.coord[ATTR_NX] = normal[0];
@@ -1185,7 +1478,8 @@ int REDirect::render_poly(rd_pointa point, bool should_draw)
                 clipped_list[index].coord[i] /= clipped_list[index].coord[3];
         }
 
-        // TODO: Convert the global polygon normal to world coordinates
+        // Convert the poly_normal global into world coordinates
+        poly_normal = poly_normal * normal_transform;
 
         // Pass the clipped geometry into the scan conversion function
         draw_poly(num_vertex, clipped_list);
@@ -1427,10 +1721,6 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
                 for (int index = 5; index < ATTR_SIZE; index++)
                     surface_point_values.coord[index] /= surface_point_values.coord[ATTR_CONSTANT];
 
-                // If the shader is nullptr, default to matte
-                if (shader == nullptr)
-                    shader = matte_shader;
-
                 // Get the color from the current shader
                 float* color = new float[3];
                 shader(color);
@@ -1636,6 +1926,17 @@ rd_pointa REDirect::boundary_intersection(rd_pointa v1, rd_pointa v2, int bounda
         interpolated.coord[index] = v1.coord[index] + alpha * (v2.coord[index] - v1.coord[index]);
 
     return interpolated;
+}
+
+/// Passed the points into the poly pipeline. I just wrote this so I didn't
+/// have to copy paste render_poly and true/false 1000000 times.
+void REDirect::draw_face(rd_pointa v1, rd_pointa v2, rd_pointa v3, rd_pointa v4)
+{
+    // Pass each point in
+    render_poly(v1, false);
+    render_poly(v2, false);
+    render_poly(v3, false);
+    render_poly(v4, true);
 }
 
 /// Checks for certain special options and toggles them on

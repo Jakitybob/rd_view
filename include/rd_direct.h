@@ -67,9 +67,13 @@ private:
 
     // Primitive Rendering functions
     void render_circle(float radius, float z);
+    void draw_face(rd_pointa v1, rd_pointa v2, rd_pointa v3, rd_pointa v4);
 
     // Utility functions
     static float clamp(float val, float min, float max);
+    static void calculate_ambient(float* color);
+    static void calculate_diffuse(float* color);
+    static void calculate_specular(float* color);
 
 public:
     // GENERAL FUNCTIONS
@@ -118,6 +122,7 @@ public:
     int rd_point_light(const float pos[3], const float color[], float intensity) override;
     int rd_far_light  (const float dir[3], const float color[], float intensity) override;
     int rd_ambient_light(const float color[], float intensity) override;
+    int rd_specular_color(const float color[], int exponent) override;
     int rd_k_ambient(float Ka) override;
     int rd_k_diffuse(float Kd) override;
     int rd_k_specular(float Ks) override;

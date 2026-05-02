@@ -26,14 +26,19 @@ public:
     // Operator Overloads
     rd_xform operator* (rd_xform m2);
     class rd_pointh operator* (class rd_pointh point);
+    class rd_vector operator* (rd_vector vector);
+    friend class rd_vector operator* (rd_vector vector, const rd_xform& matrix);
     rd_xform& operator= (rd_xform m2);
 
     // Member functions
     void set_translation(float tx, float ty, float tz);
     void set_scale(float sx, float sy, float sz);
     void set_xy_rotation(float angle); // top left
+    void set_xy_inverse(float angle);
     void set_yz_rotation(float angle); // middle
+    void set_yz_inverse(float angle);
     void set_zx_rotation(float angle); // spread out
+    void set_zx_inverse(float angle);
     void set_identity();
 
     // Setter function

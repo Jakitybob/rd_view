@@ -11,6 +11,7 @@ Purpose: This class implements a simple 3D point with a number
 #include "rd_pointc.h"
 #include "rd_vector.h"
 #include "rd_pointh.h"
+#include "rd_pointa.h"
 
 /// @returns A point initialized to the origin (0, 0, 0).
 rd_pointc::rd_pointc()
@@ -42,6 +43,14 @@ rd_pointc::rd_pointc(class rd_pointh point)
     this->x = point.get_x() / point.get_w();
     this->y = point.get_y() / point.get_w();
     this->z = point.get_z() / point.get_w();
+}
+
+/// @returns A point converted from attributed to cartesian.
+rd_pointc::rd_pointc(rd_pointa point)
+{
+    this->x = point.coord[0] / point.coord[3];
+    this->y = point.coord[1] / point.coord[3];
+    this->z = point.coord[2] / point.coord[3];
 }
 
 /// @returns The vector found from subtracting our points together.

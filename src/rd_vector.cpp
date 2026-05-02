@@ -83,6 +83,14 @@ rd_vector rd_vector::operator* (float scalar)
     return rd_vector(x * scalar, y * scalar, z * scalar);
 }
 
+/// Allows for left-hand multiplication of a vector for ease of
+/// writing formulas without having to worry about the side of multiplication.
+/// @returns The vector on the right multiplied by the float on the left.
+rd_vector operator* (float factor, const rd_vector& vector)
+{
+    return rd_vector(vector.GetX() * factor, vector.GetY() * factor, vector.GetZ() * factor);
+}
+
 /// @param v The vector to copy onto this one.
 /// @returns A reference to this object which has been updated.
 rd_vector& rd_vector::operator= (const rd_vector &v)
@@ -93,6 +101,23 @@ rd_vector& rd_vector::operator= (const rd_vector &v)
     this->z = v.z;
 
     return *this;
+}
+
+/// @param index The index of the data to access.
+/// @returns The value at the index inside the vector.
+float& rd_vector::operator[](int index)
+{
+    switch (index)
+    {
+        case 0:
+            return x;
+        case 1:
+            return y;
+        case 2:
+            return z;
+        default:
+            throw std::out_of_range("Index cannot exceed 3 on a homogenous point.");
+    }
 }
 
 /// @returns The magnitude of the vector.
@@ -106,6 +131,22 @@ rd_vector rd_vector::normalized()
 {
     float magnitude = this->magnitude();
     return rd_vector(x / magnitude, y / magnitude, z / magnitude);
+}
+
+/// @returns A vector pointing in the opposite direction
+/// of the current vector.
+rd_vector rd_vector::flipped_vector()
+{
+    return rd_vector(-x, -y, -z);
+}
+
+/// @param v1 The vector to reflect upon, typically a surface normal.
+/// @param v2 The vector being reflected about v1, typically a light vector.
+/// @returns The reflection of v2 across v1.
+rd_vector rd_vector::reflect(rd_vector light, rd_vector normal)
+{
+    //return light - 2 * (normal ^ light) / powf(normal.magnitude(), 2) * normal;
+    return (2 * (normal ^ light) / powf(normal.magnitude(), 2) * normal) - light;
 }
 
 /// Prints the contents of the vector to standard output for debugging purposes.

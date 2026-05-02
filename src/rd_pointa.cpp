@@ -9,6 +9,7 @@ Purpose: This header implements a simple attributed point
 *********************************************************************/
 
 #include "rd_pointa.h"
+#include "rd_pointc.h"
 
 /// Default constructor to fill the array with 0 so it has
 /// valid values no matter what.
@@ -38,6 +39,21 @@ rd_pointa::rd_pointa(const rd_pointa &point)
 {
     for (int index = 0; index < ATTR_SIZE; index++)
         coord[index] = point.coord[index];
+}
+
+/// Creates a new attributed point with the
+/// xyz values from the cartesian point and w
+/// set to 1.
+rd_pointa::rd_pointa(const rd_pointc &point)
+{
+    coord[0] = point.get_x();
+    coord[1] = point.get_y();
+    coord[2] = point.get_z();
+    coord[3] = 1;
+
+    // Fill the rest in with 0s
+    for (int index = 4; index < ATTR_SIZE; index++)
+        coord[index] = 0;
 }
 
 /// @returns This attributed point with all values in coord

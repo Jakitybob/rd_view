@@ -30,11 +30,15 @@ public:
     float operator^ (class rd_pointc); // Vector ^ cartesian point (dot product)
     rd_vector operator* (rd_vector v); // Vector * vector (cross product)
     rd_vector operator* (float scalar); // Vector * scalar
+    friend rd_vector operator* (float factor, const rd_vector& vector);
     rd_vector& operator=(const rd_vector& v); // Vector = vector
+    float& operator[](int index);
 
     // Functions
     float magnitude();
     rd_vector normalized();
+    rd_vector flipped_vector();
+    static rd_vector reflect(rd_vector light, rd_vector normal);
 
     // Getters / Setters
     float GetX() const { return x; }
