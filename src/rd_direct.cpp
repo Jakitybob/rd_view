@@ -686,7 +686,7 @@ int REDirect::rd_sphere(float radius, float zmin, float zmax, float thetamax)
                 v3 = rd_pointc(bottom_right.coord[0], bottom_right.coord[1], bottom_right.coord[2]);
 
             // Calculate the polygon normal using these three vertices
-            poly_normal = ((v2 - v1) * (v3 - v1)).normalized();
+            poly_normal = ((v2 - v1) * (v3 - v1)).flipped_vector().normalized();
 
             // Pass our last vertex in and draw our polygon
             render_poly(bottom_right, true);
