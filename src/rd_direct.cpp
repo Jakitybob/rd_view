@@ -1698,6 +1698,9 @@ void REDirect::fill_between_edges(int scanline, rd_edge *aet)
     rd_edge *current = aet->next, *next;
     while (current)
     {
+        // Figure out why certain specific cases have stray edges
+        if (current->next == nullptr) break;
+
         // Get the pair of edges from the active edge table
         next = current->next;
 
